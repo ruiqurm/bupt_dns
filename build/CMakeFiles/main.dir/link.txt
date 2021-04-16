@@ -1,0 +1,1 @@
+/bin/x86_64-linux-gnu-gcc-9 -g  -rdynamic CMakeFiles/main.dir/src/common.c.o CMakeFiles/main.dir/src/log.c.o CMakeFiles/main.dir/src/main.c.o  -o main 
