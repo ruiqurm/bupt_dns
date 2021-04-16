@@ -1,3 +1,0 @@
-/home/ruiqurm/bupt/dns/CMakeFiles/rebuild_cache.dir
-/home/ruiqurm/bupt/dns/CMakeFiles/edit_cache.dir
-/home/ruiqurm/bupt/dns/CMakeFiles/main.dir
