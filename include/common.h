@@ -1,25 +1,30 @@
 #pragma once
+
+
+
+#include <arpa/inet.h>
+
 #define HOST_MAX_LENGTH 64
 #define COMPRESS_FLAG 0xc0
 #define COMPRESS_MASK 0x3fff
-
-#include <arpa/inet.h>
+#define FLAG_QUERY 0x0100
+#define FLAG_RESPONSE_NORMAL 0x8150
 
 #define IN_16b_RANGE(x) ((int)x>=0&&(int)x<=0xffff)
 #define IN_32b_RANGE(x) ((int)x>=0&&(int)x<=0xffffffff)
 #define get_compress_pos(x) (x & COMPRESS_MASK)
 #define is_compress(x) (x & COMPRESS_FLAG)
-#define QUERY_FLAG 0x0100
-#define write_query_header(x) write_dns_header(x,-1,QUERY_FLAG,1,0,0,0)
-#define DNS_SERVER_PORT 53
 
+#define write_query_header(x) write_dns_header(x,-1,FLAG_QUERY,1,0,0,0)
+#define DNS_SERVER_PORT 53
+#define MAX_UDP_SIZE 1500
+#define MAX_DNS_SIZE 520
 enum RRtype{
     A=1,NS=2,CNAME=5,SOA=6,PTR=12,MX=15,AAAA=28
 };
 enum Class{
     HTTP_CLASS=1,NONE_CLASS=254,ALL_CLASS=255
 };
-
 union ip{
     union{
     //     #pragma pack(1)
@@ -134,7 +139,8 @@ int write_dns_rr(char* buffer,const char*name,int type,int class,int ttl,const v
 // 打包区
 // 快速发送询问
 int write_dns_query(char*buffer,char questions[],int rrtype);
-
+int write_dns_response_by_query(char*buffer,struct rr answer[],uint16_t answer_num);
+//通过请求报文重写为回答
 
 // 调试区
 int sprint_dns_header(char*dest,char*header);

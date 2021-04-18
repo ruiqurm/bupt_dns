@@ -123,6 +123,33 @@ main/fast:
 	$(MAKE) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/build
 .PHONY : main/fast
 
+src/client.o: src/client.c.o
+
+.PHONY : src/client.o
+
+# target to build an object file
+src/client.c.o:
+	$(MAKE) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/client.c.o
+.PHONY : src/client.c.o
+
+src/client.i: src/client.c.i
+
+.PHONY : src/client.i
+
+# target to preprocess a source file
+src/client.c.i:
+	$(MAKE) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/client.c.i
+.PHONY : src/client.c.i
+
+src/client.s: src/client.c.s
+
+.PHONY : src/client.s
+
+# target to generate assembly for a file
+src/client.c.s:
+	$(MAKE) -f CMakeFiles/main.dir/build.make CMakeFiles/main.dir/src/client.c.s
+.PHONY : src/client.c.s
+
 src/common.o: src/common.c.o
 
 .PHONY : src/common.o
@@ -213,6 +240,9 @@ help:
 	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... main"
+	@echo "... src/client.o"
+	@echo "... src/client.i"
+	@echo "... src/client.s"
 	@echo "... src/common.o"
 	@echo "... src/common.i"
 	@echo "... src/common.s"

@@ -18,8 +18,7 @@ AUX_SOURCE_DIRECTORY(./src DIR_SRCS)
 ############################################################
 # Create an executable
 ############################################################
-set(CXX_FLAGS,
-              -Wall)
+set(CMAKE_C_FLAGS,"-werror")
 
 ADD_EXECUTABLE(main ${DIR_SRCS} )
 

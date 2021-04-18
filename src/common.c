@@ -11,7 +11,15 @@
 
 const int DNS_HEADER_SIZE = sizeof(struct dns_header);
 const int QUERY_SIZE = sizeof(struct question);
-const int MAX_DNS_SIZE = 513;
+
+inline
+static char* skip_to_answer(char*data){
+    //跳到answer
+    data+=DNS_HEADER_SIZE;
+    while((*data)!=0)data+=(*data)+1;
+    data+=5;
+    return data;
+}
 
 int saveip(struct IP*ip,const char* src,int version){
     switch (version)
@@ -274,7 +282,9 @@ int write_dns_question(char*buffer,const char*question,int class,int type){
     size+=sizeof(struct question_struct);
     return size;
 }
+// int write_dns_empty_rr(char* buffer){
 
+// }
 int write_dns_rr(char* buffer,const char*name,int type,int class,int ttl,const void*rdata){
     //TODO: 添加异常处理
     struct rr_struct* rr;
@@ -292,23 +302,29 @@ int write_dns_rr(char* buffer,const char*name,int type,int class,int ttl,const v
     rr->ttl = htonl(IN_32b_RANGE(ttl)?ttl:0);
     tmp = sizeof(struct rr_struct);
     buffer+=tmp;
+    
+
     switch (type){
     case A:
         rr->length = htons(4);
+        size = 4;
+        memcpy(buffer,rdata,size);
         break;
     case AAAA:
         rr->length = htons(16);
+        size = 16;
+        memcpy(buffer,rdata,size);
         break;
     case CNAME:
-        rr->length = htons(strlen((char*)rdata));
+        size =str_to_label(buffer,(char*)rdata,MAX_DNS_SIZE);
+        rr->length =htons(size);
         break;
     // case MX:
         // break;
     default:
         return -1;
     }
-    size = rr->length;//size重新利用一下
-    memcpy(buffer,rdata,size);
+
     buffer += size;
     count += tmp+size;
     return count;
@@ -322,7 +338,20 @@ int write_dns_query(char*buffer,char questions[],int rrtype){
 
     return buffer_ - buffer;
 }
-
+int write_dns_response_by_query(char*buffer,struct rr answer[],uint16_t answer_num){
+    struct dns_header *header;
+    header = (struct dns_header*)buffer;
+    header->flags = htons(FLAG_RESPONSE_NORMAL);
+    header->ancount = htons(answer_num);
+    char* data = skip_to_answer(buffer);
+    for(int i=0;i<answer_num;i++){
+        data += write_dns_rr(data,answer[i].name,answer[i].type,answer[i].class_,answer[i].ttl,&answer[i].address);
+        //                                                                                    ^^^^^^^^^^^^^^^^^^
+        //                                                                                  无论是cname还是address，开始地址都是相同的。
+        //                                                                                  在write_dns_rr中，rdata会被确定为具体的类型                                                       
+    }
+    return data-buffer;
+}
 
 
 static enum{
@@ -431,13 +460,13 @@ int sprint_dns_header(char*dest,char*src){
 Transaction ID: 0x%2x\n\
 FLAG: 0x%04x\n\\
 %d... .... .... .... = Response:%s\n\
-.%s... .... .... = Opcode: %s)\n\
+.%s... .... ....  = Opcode: %s\n\
 .... ..%d. .... .... = Truncated: %s\n\
 .... ...%d .... .... = Recursion desired: %s\n\
 .... .... .%d.. .... = Z: reserved (0)\n\
 .... .... ...%d .... = %s\n",
                 header.id,
-                header.flags,
+                ntohs(header.flags),//为了打印需要
                 0,debugstr(DEBUG_PRINT_TYPE_qr,header.qr),
                 bit_to_str(header.opcode,4),debugstr(DEBUG_PRINT_TYPE_opcode,header.opcode),
                 header.tc,debugstr(DEBUG_PRINT_TYPE_tc,header.tc),
@@ -461,7 +490,7 @@ FLAG: 0x%04x\n\
 .... .... ..%d .... = %s\n\
 .... .... .... %s = Reply code: %s\n",
                 header.id,
-                header.flags,
+                ntohs(header.flags),////为了打印需要
                 1,debugstr(DEBUG_PRINT_TYPE_qr,1),
                 bit_to_str(header.opcode,4),debugstr(DEBUG_PRINT_TYPE_opcode,header.opcode),
                 header.aa,debugstr(DEBUG_PRINT_TYPE_aa,header.aa),
@@ -524,12 +553,18 @@ int sprint_dns_answers(char*dest,char*message){
 int sprint_dns(char*dns){
     char buffer[2048];
     char*dest = buffer;
+    struct dns_header* header;
+    header = (struct dns_header*)dns;
     dest+=sprint_dns_header(dest,dns);
 
     // const char* query_start = dns + sizeof(struct header_struct);
     // dest+=sprint_dns_header(dest,dns);
-    dest+=sprint_dns_questions(dest,dns);
-    dest+=sprint_dns_answers(dest,dns);
+    if (header->qdcount){//大端小端 0都是00 00
+        dest+=sprint_dns_questions(dest,dns);
+    }
+    if(header->ancount){//大端小端 0都是00 00
+        dest+=sprint_dns_answers(dest,dns);
+    }
     puts(buffer);
     // fflush(stdout);
     fflush(stdout);

@@ -4,3 +4,4 @@ build
 .vscode
 CMakeCache.txt
 cmake_install.cmake
+src/*.o
