@@ -111,19 +111,6 @@ int multiquery(int sockfd,struct sockaddr_in*to,char*questions[],size_t question
 
 
 
-
-// int fetch_umcompress_label(char*dest,const char*src){
-//     short now = 0;
-//     short i = 0;
-//     while(src[now]!=0){
-//         for(short j =1;j<=src[now];j++)
-//             dest[i++]=src[j+now];
-//         dest[i++] = '.';
-//         now += src[now]+1;
-//     }
-//     dest[now-1] = 0;
-//     return i;
-// }
 int fetch_label(char* dest,char*src,char* base,char**next){
     /*
     获取标签。

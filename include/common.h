@@ -19,6 +19,8 @@
 #define DNS_SERVER_PORT 53
 #define MAX_UDP_SIZE 1500
 #define MAX_DNS_SIZE 520
+#define MAX_LABEL_LANGTH 64 //63 留一个位置作结束符
+#define MAX_NAME_LENGTH 513 //512 留一个位置作结束符
 enum RRtype{
     A=1,NS=2,CNAME=5,SOA=6,PTR=12,MX=15,AAAA=28
 };
