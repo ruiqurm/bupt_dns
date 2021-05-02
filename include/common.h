@@ -27,6 +27,9 @@ enum RRtype{
 enum Class{
     HTTP_CLASS=1,NONE_CLASS=254,ALL_CLASS=255
 };
+enum{
+    IPV4 =4,IPV6=6
+};
 union ip{
     union{
     //     #pragma pack(1)
@@ -51,7 +54,7 @@ union ip{
 };
 struct IP{
     union ip addr;
-    u_int8_t type;
+    unsigned char type;
 };
 int saveip(struct IP*ip,const char* src,int version);
 struct dns_header{
