@@ -7,4 +7,4 @@ aux_source_directory(. DIR_SRCS)
 # ADD_EXECUTABLE(dns main.c)
 add_library(cachelib STATIC cache.c)
 
-ADD_EXECUTABLE(aaa ${DIR_SRCS})
+ADD_EXECUTABLE(dns ${DIR_SRCS})

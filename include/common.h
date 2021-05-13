@@ -151,7 +151,7 @@ int write_dns_response_by_query(char*buffer,struct rr answer[],uint16_t answer_n
 int sprint_dns_header(char*dest,char*header);
 int sprint_dns_questions(char*dest,char*message_start);
 int sprint_dns_answers(char*dest,char*rr);
-int sprint_dns(char*dns);
+void sprint_dns(char*dns);
 
 // void print_dns_header(const char*header);
 
@@ -159,4 +159,6 @@ int sprint_dns(char*dns);
 // int write_dns_response();
 // int write_dns_with_header(char*dest,struct header*header,struct question* question);
 
-
+const unsigned int ADDR_LEN;
+const unsigned int DNS_HEADER_SIZE;
+const int QUERY_SIZE;

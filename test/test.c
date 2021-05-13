@@ -1,5 +1,7 @@
 #include<stdio.h>
 #include<string.h>
+#include<stdlib.h>
+#include<time.h>
 #include"cache.h"
 
 typedef struct record_data myrecord;
@@ -12,24 +14,27 @@ int len = sizeof("www.bupt.edu.cn");
 
 
 void init_records(){
+    time_t now = time(NULL);
     for(int i=0;i<2000;i++){
         // memcpy(&records[i],&tmp,sizeof(record));
         sprintf((char*)&records[i].label,"%s%d",(char*)&tmp.label,i);
         records[i].ip.addr.v4 = 0x12345678+i;
+        records[i].ttl = rand()%1+now;
     }
 }
-#include<time.h>
-#include<stdlib.h>
+
 
 int main(){
     srand(time(NULL));
     init_records();
     // printf("%d",_hash("www.baidu.com1",1000))
-    init_list();
-    for (int i =0;i<10000000;i++){
+    init_cache();
+    size_t now;
+    for (int i =0;i<10000;i++){
         int r = rand() % 2000;
+        if(now%500==0)now =time(NULL);
         if(r%4==0){
-            set_cache((const char*)&records[r].label,&records[r].ip);
+            set_cache((const char*)&records[r].label,&records[r].ip,records[r].ttl-now);
         }else{
             get_cache((const char*)&records[r].label);
         }

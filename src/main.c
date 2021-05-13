@@ -1,5 +1,7 @@
 #include "common.h"
 #include"log.h"
+#include"relay.h"
+#include"cache.h"
 #include <errno.h>
 #include<stdio.h>
 #include<string.h>
@@ -9,101 +11,113 @@
 
 typedef struct sockaddr SA;
 
-struct sockaddr_in exservaddr;
-const socklen_t ADDR_LEN  =sizeof(exservaddr);
 
-int init_server(){
-    bzero(&exservaddr,ADDR_LEN);
-    exservaddr.sin_family = AF_INET;
-    exservaddr.sin_port = htons(DNS_SERVER_PORT);
-    inet_pton(AF_INET,"10.3.9.4",&exservaddr.sin_addr);
+void init(){
+    init_query_server();
+    init_cache();
 }
 
-int query(char questions[],int type,struct rr answers[]){
-    //向DNS服务器询问
-    int sockfd; 
-    socklen_t len;
-    char buffer[MAX_DNS_SIZE];
-    int total_size = 0;
-    
-    sockfd = socket(AF_INET,SOCK_DGRAM,0);
-
-    // struct timeval tv;
-    // tv.tv_sec = 5;
-    // tv.tv_usec = 0;
-    // if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
-    //     log_error("set timeout error",strerror(errno));
-    // }
-
-    total_size = write_dns_query(buffer,questions,type);
-    
-    if (sendto(sockfd,(char*)buffer,total_size,0,(SA*)&exservaddr,ADDR_LEN)<0){
-        log_error("sendto error: %s",strerror(errno));
-        return -1;
-    }
-    
-    if ((total_size = recvfrom(sockfd,buffer,MAX_DNS_SIZE,0,(SA*)&exservaddr,&len))<0){
-        log_error("recvfrom error: %s",strerror(errno));;
-        return -1;
-    }
-    sprint_dns(buffer);
-    return read_dns_answers(answers,buffer);
-}
 
 int main(int argc, char **argv)
 {
     int sockfd; 
     struct sockaddr_in servaddr,cliaddr;
     socklen_t len,clilen;
+    char recv_buffer[MAX_DNS_SIZE];
+    char query_buffer[MAX_DNS_SIZE];
+    struct dns_header header;
+    struct question question;
+    struct rr ans[4];
+    struct record_data* data;
+    unsigned ip;
+    int enable_cache;
+    int _size;//临时变量
+    time_t now;
 
-    init_server();
+    init();
 
     clilen = sizeof(cliaddr);
     sockfd = socket(AF_INET,SOCK_DGRAM,0);
-    bzero(&servaddr,sizeof(servaddr));
+    memset(&servaddr,0,sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(DNS_SERVER_PORT);
-
+    
 
     if (bind(sockfd,(SA*)&servaddr,sizeof(servaddr))<0){
-        log_fatal("bind error:%s",strerror(errno));
         //!可能无权限
+        log_fatal("bind error:%s",strerror(errno));
         exit(0);
     }
 
     log_info("Listen on localhost:53");
-    // struct rr ans[4];
-    // query(sockfd,&servaddr,"www.baidu.com",ans);
+
     
-    char buffer[MAX_DNS_SIZE];
 
     while(1){
+        
         len = clilen;
-        if (recvfrom(sockfd,buffer,MAX_DNS_SIZE,0,(SA*)&cliaddr,&len)<0){
+
+        if (recvfrom(sockfd,recv_buffer,MAX_DNS_SIZE,0,(SA*)&cliaddr,&len)<DNS_HEADER_SIZE){
+            //接收失败，直接丢弃
             log_error("recvfrom error:%s",strerror(errno));
+            errno = 0;
+            continue;
+        }
+        
+        ip = ntohl(cliaddr.sin_addr.s_addr);
+        log_info("Recvfrom %d:%d:%d:%d:port:%d ",*(char*)&ip,*(((char*)&ip)+1),*(((char*)&ip)+2),*(((char*)&ip)+3),ntohs(cliaddr.sin_port));
+        
+        read_dns_header(&header,recv_buffer);
+        sprint_dns(recv_buffer);
+        if(header.flags!=htons(FLAG_QUERY)){
+            //不是询问，也丢弃
+            continue;
+        }
+            
+        read_dns_questions(&question,recv_buffer);
+        
+        switch (question.qtype){
+        case A:
+        // case AAAA:
+            enable_cache = 1;
+            //只处理这几个
+            break;
+        default:
+            enable_cache = 0;
+            break;
+        }
+        if(!enable_cache){
+            relay(header.id,&question,recv_buffer,sockfd,&cliaddr);
+            continue;
+        }
+        if ((data=get_cache(question.label))){
+            log_debug("取到缓存");
+            now = time(NULL);
+            ans[0].ttl = data->ttl-now;
+            memcpy(&ans[0].address,&data->ip,sizeof(struct IP));
+            strcpy(ans[0].name,question.label);
+            ans[0].type = question.qtype;
+            ans[0].class_ = question.qclass;
+            _size = write_dns_response_by_query(query_buffer,ans,1);
+            if (sendto(sockfd,query_buffer,_size,0,(SA*)&cliaddr,sizeof(cliaddr))<0){
+                    log_error("sendto error:%s",strerror(errno));
+                    errno = 0;
+            }
         }else{
-            unsigned ip = ntohl(cliaddr.sin_addr.s_addr);
-            log_info("Recvfrom %d:%d:%d:%d:port:%d ",*(char*)&ip,*(((char*)&ip)+1),*(((char*)&ip)+2),*(((char*)&ip)+3),ntohs(cliaddr.sin_port));
-            struct dns_header header;
-            read_dns_header(&header,buffer);
-            if(header.flags==htons(FLAG_QUERY)){
-                sprint_dns(buffer);
-                struct question question;
-                read_dns_questions(&question,buffer);
-                struct rr ans[4];
-                log_debug("尝试向DNS服务器请求");
-                int ans_num = query(question.label,question.qtype,ans);
-                if (ans_num>=0){
-                    log_debug("获取到%d条回复",ans_num);
-                    int size = write_dns_response_by_query(buffer,ans,ans_num);
-                    if (sendto(sockfd,buffer,size,0,(SA*)&cliaddr,len)<0){
-                        log_error("sendto error:%s",strerror(errno));
-                    }
-                    log_debug("发送回复到客户端");
-                }else{
-                    log_warn("获取DNS地址失败");
-                }
+            log_debug("未取到缓存");
+            _size = query(question.label,question.qtype,query_buffer);
+            int _ans_num = read_dns_answers(ans,query_buffer);
+            struct dns_header* pheader;
+            if(_ans_num>0){
+                now = time(NULL);
+                set_cache(ans[0].name,&ans[0].address,ans[0].ttl+now);
+            }
+            pheader = (struct dns_header*)query_buffer;
+            pheader->id = header.id;
+            if (sendto(sockfd,query_buffer,_size,0,(SA*)&cliaddr,sizeof(cliaddr))<0){
+                log_error("sendto error:%s",strerror(errno));
+                errno = 0;
             }
         }
     }

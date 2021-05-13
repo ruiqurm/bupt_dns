@@ -9,7 +9,8 @@
 #include <unistd.h>
 #include<time.h>
 
-const int DNS_HEADER_SIZE = sizeof(struct dns_header);
+const unsigned int ADDR_LEN=sizeof(struct sockaddr_in);
+const unsigned int DNS_HEADER_SIZE =sizeof(struct dns_header);
 const int QUERY_SIZE = sizeof(struct question);
 
 inline
@@ -537,7 +538,7 @@ int sprint_dns_answers(char*dest,char*message){
     }
     return dest - dest_;
 }
-int sprint_dns(char*dns){
+void sprint_dns(char*dns){
     char buffer[2048];
     char*dest = buffer;
     struct dns_header* header;
