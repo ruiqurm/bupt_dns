@@ -18,7 +18,7 @@ void init_query_server(const char *query_server_addr);
 
 /**
  * @brief 快速询问一个服务器
- * 
+ *
  * @param questions question
  * @param type type
  * @param buffer 返回的数据（报文）
@@ -28,7 +28,7 @@ int query(char questions[], int type, char buffer[MAX_DNS_SIZE]);
 
 /**
  * @brief 中继
- * 
+ *
  * @param id 请求报文id
  * @param question question
  * @param buffer 缓冲区，不需要放数据，但是要大于DNS_MAX_SIZE；节省开销

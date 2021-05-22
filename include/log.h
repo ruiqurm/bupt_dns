@@ -22,34 +22,32 @@ SOFTWARE.
 修改自https://github.com/rxi/log.c
 */
 
-#include<errno.h>
+#include <errno.h>
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <time.h>
-
 
 static const int MAX_CALLBACK_NUM = 4;
 typedef struct {
-  va_list ap;//参数列表
-  const char *fmt;//格式串
-  const char *file;//写文件
-  struct tm *time;//时间
-  void *udata; //流，比如stderr
-  int line;//行号
-  int level;//等级
+  va_list ap;       //参数列表
+  const char *fmt;  //格式串
+  const char *file; //写文件
+  struct tm *time;  //时间
+  void *udata;      //流，比如stderr
+  int line;         //行号
+  int level;        //等级
 } log_Event;
 
-typedef void (*log_LockFn)(bool lock, void *udata);//对udata的锁
+typedef void (*log_LockFn)(bool lock, void *udata); //对udata的锁
 
 enum { LOG_TRACE, LOG_DEBUG, LOG_INFO, LOG_WARN, LOG_ERROR, LOG_FATAL };
 
 /**
  * @brief 6个LOG等级
  */
-static const char *LOG_LEVEL_STRING[] ={
-    "TRACE","DEBUG","INFO","WARN","ERROR","FATAL"
-};
+static const char *LOG_LEVEL_STRING[] = {"TRACE", "DEBUG", "INFO",
+                                         "WARN",  "ERROR", "FATAL"};
 
 /**
  * @brief log等级对应的颜色
@@ -61,9 +59,8 @@ static const char *LOG_LEVEL_STRING[] ={
             FATAL: Magenta紫色
             具体用法参考：https://www.codeproject.com/Tips/5255355/How-to-Put-Color-on-Windows-Console
  */
-static const char *LOG_LEVEL_COLOR[] = {
-  "\x1b[94m", "\x1b[36m", "\x1b[32m", "\x1b[33m", "\x1b[31m", "\x1b[35m"
-};
+static const char *LOG_LEVEL_COLOR[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m",
+                                        "\x1b[33m", "\x1b[31m", "\x1b[35m"};
 
 /**
  * @brief trace等级log
@@ -78,12 +75,12 @@ static const char *LOG_LEVEL_COLOR[] = {
 /**
  * @brief info等级log
  */
-#define log_info(...)  log_log(LOG_INFO,  __FILE__, __LINE__, __VA_ARGS__)
+#define log_info(...) log_log(LOG_INFO, __FILE__, __LINE__, __VA_ARGS__)
 
 /**
  * @brief warn等级log
  */
-#define log_warn(...)  log_log(LOG_WARN,  __FILE__, __LINE__, __VA_ARGS__)
+#define log_warn(...) log_log(LOG_WARN, __FILE__, __LINE__, __VA_ARGS__)
 
 /**
  * @brief error等级log
@@ -111,17 +108,17 @@ void log_set_level(int level);
 
 /**
  * @brief log关闭/开启
- * 
+ *
  * @param enable true开启 false关闭
  */
 void log_set_quiet(bool enable);
 
 /**
  * @brief 文件log初始化
- * 
+ *
  * @param filename 文件名称
  */
-void filelog_init(const char* filename);
+void filelog_init(const char *filename);
 
 /**
  * @brief 文件log关闭
@@ -141,10 +138,7 @@ void filelog_set_level(int level);
 
 /**
  * @brief 文件log关闭/开启
- * 
+ *
  * @param enable true开启 false关闭
  */
 void filelog_set_quiet(bool enable);
-
-
-
