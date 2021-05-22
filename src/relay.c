@@ -4,7 +4,7 @@
 #include<errno.h>
 
 
-void init_query_server(){
+void init_query_server(const char* query_server_addr){
     memset(&query_server,0,ADDR_LEN);
     query_server.sin_family = AF_INET;
     query_server.sin_port = htons(DNS_SERVER_PORT);
@@ -47,14 +47,14 @@ void relay(int id,struct question* question,char buffer[MAX_DNS_SIZE],
     //中继
     int size;
     struct dns_header* header;
-    
-    log_debug("[中继]向DNS服务器请求");
+    log_debug("中继:向DNS服务器请求");
     size = query(question->label,question->qtype,buffer);
     header = (struct dns_header*)buffer;
-    header->id = id;
-    if (sendto(sockfd,buffer,size,0,(SA*)&target,sizeof(*target))<0){
+    header->id = htons(id);
+    if (sendto(sockfd,buffer,size,0,(SA*)target,sizeof(*target))<0){
         log_error("sendto error:%s",strerror(errno));
         errno = 0;
+    }else{
+        log_info("成功回复");    
     }
-    log_debug("[中继]发送回复到客户端");    
 }

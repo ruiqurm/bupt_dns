@@ -3,20 +3,17 @@
 /*
 锁
 */
-typedef struct{
-    log_Callback fn;
-    void* udata;
-    int level;
-}Callback;
-
-static struct {
+static struct logging{
   void *udata;
-  Callback callbacks[4];
-  int max_call_back;
   log_LockFn lock;
   int level;
   bool quiet;
-} LOGGING;
+} LOGGING,FILE_LOGGING;
+
+static int has_init_file = 0;
+
+
+
 
 static void lock(void)   {
     if (LOGGING.lock) { LOGGING.lock(true, LOGGING.udata); }
@@ -25,7 +22,12 @@ static void lock(void)   {
 static void unlock(void) {
     if (LOGGING.lock) { LOGGING.lock(false, LOGGING.udata); }
 }
-
+static void lock_file(void){
+    if (FILE_LOGGING.lock) { FILE_LOGGING.lock(true, FILE_LOGGING.udata); }
+}
+static void unlock_file(void){
+    if (FILE_LOGGING.lock) { FILE_LOGGING.lock(false, FILE_LOGGING.udata); }
+}
 static void init_event(log_Event *ev, void *udata) {//配置时间和流
     if (!ev->time) {
         time_t t = time(NULL);
@@ -33,7 +35,7 @@ static void init_event(log_Event *ev, void *udata) {//配置时间和流
     }
     ev->udata = udata;
 }
-static void stdout_callback(log_Event *ev) {
+static void stdout_callback(log_Event *ev) {//向控制台写
     char buf[64];
     buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] = '\0';//把日期写入buffer
     fprintf(
@@ -45,7 +47,7 @@ static void stdout_callback(log_Event *ev) {
     fflush(ev->udata);
 }
 
-static void file_callback(log_Event *ev) {//file 回调
+static void file_callback(log_Event *ev) {//向文件写
   char buf[64];
   buf[strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ev->time)] = '\0';
   fprintf(
@@ -57,34 +59,56 @@ static void file_callback(log_Event *ev) {//file 回调
 }
 
 /*
-对外部接口
+外部接口
 */
+inline static
+void set_lock(struct logging* log,log_LockFn fn, void *udata){
+    log->lock = fn;
+    log->udata = udata;
+}
+inline static
+void set_level(struct logging* log,int level) {
+    log->level = level;
+}
+inline static 
+void set_quiet(struct logging* log,bool enable) {
+    log->quiet = enable;
+}
+
+
 void log_set_lock(log_LockFn fn, void *udata) {
-    LOGGING.lock = fn;
-    LOGGING.udata = udata;
+    set_lock(&LOGGING,fn,udata);
 }
 
 void log_set_level(int level) {
-    LOGGING.level = level;
+    set_level(&LOGGING,level);
 }
 
 void log_set_quiet(bool enable) {
-    LOGGING.quiet = enable;
+    set_quiet(&LOGGING, enable);
 }
 
-int log_add_fp(FILE *fp, int level) {
-  return log_add_callback(file_callback, fp, level);
+void flog_set_lock(log_LockFn fn, void *udata) {
+    set_lock(&FILE_LOGGING,fn,udata);
+}
+void flog_set_level(int level) {
+    set_level(&FILE_LOGGING,level);
 }
 
-int log_add_callback(log_Callback fn, void *udata, int level) {
-  for (int i = 0; i < MAX_CALLBACK_NUM; i++) {
-    if (!LOGGING.callbacks[i].fn) {
-      LOGGING.callbacks[i] = (Callback) { fn, udata, level };
-      return 0;
+void flog_set_quiet(bool enable) {
+    set_quiet(&FILE_LOGGING, enable);
+}
+void filelog_init(const char* filename){
+    FILE *fp = fopen("log.log", "w+");
+    FILE_LOGGING.udata = fp;
+    has_init_file = 1;
+}
+void filelog_close(){
+    if(FILE_LOGGING.udata){
+        fclose(FILE_LOGGING.udata);
     }
-  }
-  return -1;
 }
+
 void log_log(int level, const char *file, int line, const char *fmt, ...) {
     log_Event ev = {
         .fmt   = fmt,
@@ -94,26 +118,21 @@ void log_log(int level, const char *file, int line, const char *fmt, ...) {
     };
 
     lock();
-
     if (!LOGGING.quiet && level >= LOGGING.level) {//如果非静默 且等级高于阈值
         init_event(&ev, stderr);
         va_start(ev.ap, fmt);//按照格式保存参数到ev.ap
         stdout_callback(&ev);//执行log
         va_end(ev.ap);
     }
-    for(int i =0;i<LOGGING.max_call_back;i++){
-        Callback *cb = &LOGGING.callbacks[i];
-        if (level >= cb->level) {
-            init_event(&ev, cb->udata);
-            va_start(ev.ap, fmt);
-            cb->fn(&ev);
-            va_end(ev.ap);
-        }
-    }
     unlock();
-}
+    if (has_init_file==1){
+        lock_file();
+        if (!FILE_LOGGING.quiet && level >= FILE_LOGGING.level){
+        ev.udata = FILE_LOGGING.udata;
+        file_callback(&ev);//执行log
+        }
+        unlock_file();
+    }
 
-// int main(){
-//     log_error("ERROR");
-//     log_fatal("VERY IMPORTANT");
-// }
+
+}

@@ -13,7 +13,7 @@ typedef struct sockaddr SA;
 
 
 void init(){
-    init_query_server();
+    init_query_server("10.3.9.4");
     init_cache();
 }
 
@@ -27,7 +27,7 @@ int main(int argc, char **argv)
     char query_buffer[MAX_DNS_SIZE];
     struct dns_header header;
     struct question question;
-    struct rr ans[4];
+    struct answer ans[4];
     struct record_data* data;
     unsigned ip;
     int enable_cache;
@@ -64,8 +64,7 @@ int main(int argc, char **argv)
             errno = 0;
             continue;
         }
-        
-        ip = ntohl(cliaddr.sin_addr.s_addr);
+        ip = cliaddr.sin_addr.s_addr;//!不需要翻过来
         log_info("Recvfrom %d:%d:%d:%d:port:%d ",*(char*)&ip,*(((char*)&ip)+1),*(((char*)&ip)+2),*(((char*)&ip)+3),ntohs(cliaddr.sin_port));
         
         read_dns_header(&header,recv_buffer);
@@ -93,16 +92,20 @@ int main(int argc, char **argv)
         }
         if ((data=get_cache(question.label))){
             log_debug("取到缓存");
+            sprint_dns(recv_buffer);
             now = time(NULL);
             ans[0].ttl = data->ttl-now;
             memcpy(&ans[0].address,&data->ip,sizeof(struct IP));
             strcpy(ans[0].name,question.label);
             ans[0].type = question.qtype;
             ans[0].class_ = question.qclass;
-            _size = write_dns_response_by_query(query_buffer,ans,1);
-            if (sendto(sockfd,query_buffer,_size,0,(SA*)&cliaddr,sizeof(cliaddr))<0){
+            _size = write_dns_response_by_query(recv_buffer,ans,1);
+            // sprint_dns(query_buffer);
+            if (sendto(sockfd,recv_buffer,_size,0,(SA*)&cliaddr,sizeof(cliaddr))<0){
                     log_error("sendto error:%s",strerror(errno));
                     errno = 0;
+            }else{
+                log_info("成功回复");
             }
         }else{
             log_debug("未取到缓存");
@@ -114,10 +117,12 @@ int main(int argc, char **argv)
                 set_cache(ans[0].name,&ans[0].address,ans[0].ttl+now);
             }
             pheader = (struct dns_header*)query_buffer;
-            pheader->id = header.id;
+            pheader->id = htons(header.id);
             if (sendto(sockfd,query_buffer,_size,0,(SA*)&cliaddr,sizeof(cliaddr))<0){
                 log_error("sendto error:%s",strerror(errno));
                 errno = 0;
+            }else{
+                log_info("成功回复");
             }
         }
     }

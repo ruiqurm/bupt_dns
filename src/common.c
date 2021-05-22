@@ -76,7 +76,7 @@ int str_to_label(char* dest,const char* host,unsigned maxlen){
 
 
 
-//目前DNS不支持多查询，返回结果都是format error
+//目前DNS不支持多查询，返回结果都是format eansweror
 //https://stackoverflow.com/questions/4082081/requesting-a-and-aaaa-records-in-single-dns-query/4083071#4083071
 int multiquery(int sockfd,struct sockaddr_in*to,char*questions[],size_t questions_size){
     struct header_struct *header;
@@ -189,17 +189,17 @@ int read_dns_questions(struct question* question,char*message){
     question->qtype = ntohs(q->qtype);
     return question_num;
 }
-int read_dns_answer(struct rr*dest,char* src,char*message_start){
+int read_dns_answer(struct answer*dest,char* src,char*message_start){
     char* src_ = src;
     int cnt = fetch_label((char*)&(dest->name),src,message_start,&src);
     if(cnt==-1)return -1;
-    struct rr_struct* 
-            rr_struct = (struct rr_struct*)src;
-    dest->ttl = ntohl(rr_struct->ttl);
-    dest->class_ = ntohs(rr_struct->class_);
-    dest->type = ntohs(rr_struct->type);
-    uint16_t length = ntohs(rr_struct->length);
-    src += sizeof(struct rr_struct);
+    struct answer_struct* 
+            answer_struct = (struct answer_struct*)src;
+    dest->ttl = ntohl(answer_struct->ttl);
+    dest->class_ = ntohs(answer_struct->class_);
+    dest->type = ntohs(answer_struct->type);
+    uint16_t length = ntohs(answer_struct->length);
+    src += sizeof(struct answer_struct);
     switch (dest->type){
         case A:
         case AAAA:
@@ -222,10 +222,10 @@ int read_dns_answer(struct rr*dest,char* src,char*message_start){
     return src - src_;
 }
 
-int read_dns_answers(struct rr *answers,char* message){
+int read_dns_answers(struct answer *answers,char* message){
     //读取报文中所有回答
     struct dns_header *header;
-    struct rr_struct* rr_struct;
+    struct answer_struct* answer_struct;
     header = (struct dns_header*)message;
     unsigned short ans = ntohs(header->ancount);
     unsigned short question = ntohs(header->qdcount);
@@ -235,7 +235,7 @@ int read_dns_answers(struct rr *answers,char* message){
         data+=5;
     }
     for(int i =0;i<ans&&data!=0;i++){
-        data += read_dns_answer((struct rr*)&answers[i],data,message);
+        data += read_dns_answer((struct answer*)&answers[i],data,message);
     }
     return ans;
 }    
@@ -270,12 +270,12 @@ int write_dns_question(char*buffer,const char*question,int class,int type){
     size+=sizeof(struct question_struct);
     return size;
 }
-// int write_dns_empty_rr(char* buffer){
+// int write_dns_empty_answer(char* buffer){
 
 // }
-int write_dns_rr(char* buffer,const char*name,int type,int class,int ttl,const void*rdata){
+int write_dns_answer(char* buffer,const char*name,int type,int class,int ttl,const void*rdata){
     //TODO: 添加异常处理
-    struct rr_struct* rr;
+    struct answer_struct* answer;
     int count,size,tmp;//临时变量
 
     size = str_to_label(buffer,name,MAX_DNS_SIZE);
@@ -284,28 +284,28 @@ int write_dns_rr(char* buffer,const char*name,int type,int class,int ttl,const v
         buffer+=size;
         count=size;
     };
-    rr = (struct rr_struct*)buffer;
-    rr->type = htons(IN_16b_RANGE(type)?type:0);
-    rr->class_ =htons(IN_16b_RANGE(class)?class:0);
-    rr->ttl = htonl(IN_32b_RANGE(ttl)?ttl:0);
-    tmp = sizeof(struct rr_struct);
+    answer = (struct answer_struct*)buffer;
+    answer->type = htons(IN_16b_RANGE(type)?type:0);
+    answer->class_ =htons(IN_16b_RANGE(class)?class:0);
+    answer->ttl = htonl(IN_32b_RANGE(ttl)?ttl:0);
+    tmp = sizeof(struct answer_struct);
     buffer+=tmp;
     
 
     switch (type){
     case A:
-        rr->length = htons(4);
+        answer->length = htons(4);
         size = 4;
         memcpy(buffer,rdata,size);
         break;
     case AAAA:
-        rr->length = htons(16);
+        answer->length = htons(16);
         size = 16;
         memcpy(buffer,rdata,size);
         break;
     case CNAME:
         size =str_to_label(buffer,(char*)rdata,MAX_DNS_SIZE);
-        rr->length =htons(size);
+        answer->length =htons(size);
         break;
     // case MX:
         // break;
@@ -318,25 +318,25 @@ int write_dns_rr(char* buffer,const char*name,int type,int class,int ttl,const v
     return count;
 }
 
-int write_dns_query(char*buffer,char questions[],int rrtype){
+int write_dns_query(char*buffer,char questions[],int answertype){
     char* buffer_ = buffer;
     
-    buffer_ += write_query_header(buffer_);
-    buffer_ += write_dns_question(buffer_,questions,HTTP_CLASS,rrtype);
+    buffer_ += write_query_header_auto(buffer_);
+    buffer_ += write_dns_question(buffer_,questions,HTTP_CLASS,answertype);
 
     return buffer_ - buffer;
 }
-int write_dns_response_by_query(char*buffer,struct rr answer[],uint16_t answer_num){
+int write_dns_response_by_query(char*buffer,struct answer answer[],uint16_t answer_num){
     struct dns_header *header;
     header = (struct dns_header*)buffer;
     header->flags = htons(FLAG_RESPONSE_NORMAL);
     header->ancount = htons(answer_num);
     char* data = skip_to_answer(buffer);
     for(int i=0;i<answer_num;i++){
-        data += write_dns_rr(data,answer[i].name,answer[i].type,answer[i].class_,answer[i].ttl,&answer[i].address);
+        data += write_dns_answer(data,answer[i].name,answer[i].type,answer[i].class_,answer[i].ttl,&answer[i].address);
         //                                                                                    ^^^^^^^^^^^^^^^^^^
         //                                                                                  无论是cname还是address，开始地址都是相同的。
-        //                                                                                  在write_dns_rr中，rdata会被确定为具体的类型                                                       
+        //                                                                                  在write_dns_answer中，rdata会被确定为具体的类型                                                       
     }
     return data-buffer;
 }
@@ -388,9 +388,9 @@ static const char* debugstr(int type,int value){
         switch (value)
         {
         case 0:
-            return "No error (0)";
+            return "No eansweror (0)";
         case 1:
-            return "FormErr (1)";//格式错误
+            return "FormEanswer (1)";//格式错误
         case 2:
             return "ServFail (2)";//服务器失效
         case 3:
@@ -400,7 +400,7 @@ static const char* debugstr(int type,int value){
         case 5:
             return "Refused (5)";//查询拒绝
         default:
-            return "Unknow Error";
+            return "Unknow Eansweror";
         }
     case DEBUG_PRINT_TYPE_type:
         switch (value)
@@ -493,9 +493,9 @@ FLAG: 0x%04x\n\
     dest+=size;
     size+=sprintf(dest,
 "Questions: %d\n\
-Answer RRs: %d \n\
-Authority RRs: %d\n\
-Additional RRs: %d\n",
+Answer answers: %d \n\
+Authority answers: %d\n\
+Additional answers: %d\n",
 header.qdcount,header.ancount,header.nscount,header.adcount);
     return size;
 }
@@ -509,28 +509,28 @@ int sprint_dns_questions(char*dest,char*message_start){
     return dest-dest_;
 }
 int sprint_dns_answers(char*dest,char*message){
-    struct rr rrs[8];
+    struct answer answers[8];
     char* dest_ = dest;
-    int n = read_dns_answers(rrs,message);
+    int n = read_dns_answers(answers,message);
     dest+=sprintf(dest,"-------ANSWERS----------\n");
     for (int i =0;i<n;i++){
         dest+=sprintf(dest,"%s type:%s class:%s ",
-            rrs[i].name,
-            debugstr(DEBUG_PRINT_TYPE_type,rrs[i].type),
-            debugstr(DEBUG_PRINT_TYPE_class,rrs[i].class_));
-        switch (rrs[i].type)
+            answers[i].name,
+            debugstr(DEBUG_PRINT_TYPE_type,answers[i].type),
+            debugstr(DEBUG_PRINT_TYPE_class,answers[i].class_));
+        switch (answers[i].type)
         {
         case A:
             dest+=sprintf(dest,"ip");
             for(int j=0;j<4;j++)
-                dest+=sprintf(dest,":%d",rrs[i].address.addr.v4byte[j]);
+                dest+=sprintf(dest,":%d",answers[i].address.addr.v4byte[j]);
             break;
         case AAAA:
             for(int j=0;j<8;j++)
-                dest+=sprintf(dest,":%04x",rrs[i].address.addr.v6byte[j]);;
+                dest+=sprintf(dest,":%04x",answers[i].address.addr.v6byte[j]);;
         case CNAME:
-            dest+= sprintf(dest,"CNAME:%s",rrs[i].cname);
-            // free(&rrs[i].cname);
+            dest+= sprintf(dest,"CNAME:%s",answers[i].cname);
+            // free(&answers[i].cname);
         default:
             break;
         }
