@@ -131,20 +131,24 @@ int main(int argc, char **argv) {
     } else {
       log_debug("未取到缓存");
       _size = query(question.label, question.qtype, query_buffer);
-      int _ans_num = read_dns_answers(ans, query_buffer);
-      struct dns_header *pheader;
-      if (_ans_num > 0) {
-        now = time(NULL);
-        set_cache(ans[0].name, &ans[0].address, ans[0].ttl + now);
-      }
-      pheader = (struct dns_header *)query_buffer;
-      pheader->id = htons(header.id);
-      if (sendto(sockfd, query_buffer, _size, 0, (SA *)&cliaddr,
-                 sizeof(cliaddr)) < 0) {
-        log_error_shortcut("send error");
-        errno = 0;
-      } else {
-        log_info("成功回复");
+      if (_size>0){
+        int _ans_num = read_dns_answers(ans, query_buffer);
+        struct dns_header *pheader;
+        if (_ans_num > 0) {
+          now = time(NULL);
+          set_cache(ans[0].name, &ans[0].address, ans[0].ttl + now);
+        }
+        pheader = (struct dns_header *)query_buffer;
+        pheader->id = htons(header.id);
+        if (sendto(sockfd, query_buffer, _size, 0, (SA *)&cliaddr,
+                  sizeof(cliaddr)) < 0) {
+          log_error_shortcut("send error");
+          errno = 0;
+        } else {
+          log_info("成功回复");
+        }
+      }else{
+        log_error("回复失败");
       }
     }
   }
