@@ -264,7 +264,7 @@ struct record_data *get_cache(const char *label) {
   // return NULL;
 }
 int set_cache(const char *label, const struct IP *ip, time_t ttl) {
-#if DEBUG
+#if DEBUG==1
   test_normal();
 #endif
   return push_front(label, ip, ttl);
@@ -278,8 +278,10 @@ void clear_cache() {
 }
 
 struct hash_node *get_node(const char *label, bool *is_find) {
+  //
   unsigned pos = hash_label(label);
   struct hash_node *node = &hash_table[pos], *last;
+  //
   while (node->next) { //头结点
     last = node;
     node = node->next;

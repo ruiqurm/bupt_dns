@@ -89,14 +89,14 @@ int main(int argc, char **argv) {
              ntohs(cliaddr.sin_port));
 
     read_dns_header(&header, recv_buffer);
-    sprint_dns(recv_buffer);
+    // sprint_dns(recv_buffer);
     if (header.flags != htons(FLAG_QUERY)) {
       //不是询问，也丢弃
       continue;
     }
 
     read_dns_questions(&question, recv_buffer);
-
+    log_info("请求 %s",question.label);
     switch (question.qtype) {
     case A:
       // case AAAA:
@@ -113,7 +113,7 @@ int main(int argc, char **argv) {
     }
     if ((data = get_cache(question.label))) {
       log_debug("取到缓存");
-      sprint_dns(recv_buffer);
+      // sprint_dns(recv_buffer);
       now = time(NULL);
       ans[0].ttl = data->ttl - now;
       memcpy(&ans[0].address, &data->ip, sizeof(struct IP));

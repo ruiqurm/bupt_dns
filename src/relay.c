@@ -22,6 +22,7 @@ int query(char questions[], int type, char buffer[MAX_DNS_SIZE]) {
     log_fatal_exit_shortcut("socket error");
 		exit(0);
 	}
+  //  10.21.153.74
   // struct timeval tv;
   // tv.tv_sec = 5;
   // tv.tv_usec = 0;
@@ -43,7 +44,7 @@ int query(char questions[], int type, char buffer[MAX_DNS_SIZE]) {
     log_error_shortcut("recvfrom error:");
     return -1;
   }
-  sprint_dns(buffer);
+  // sprint_dns(buffer);
   return total_size;
 }
 
