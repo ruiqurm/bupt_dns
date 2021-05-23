@@ -5,6 +5,7 @@ project(bupt_dns)
 include_directories(
         ${PROJECT_SOURCE_DIR}/include/
 )
+link_libraries(ws2_32 wsock32)
 add_subdirectory(src)
 
 enable_testing()

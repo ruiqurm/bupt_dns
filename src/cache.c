@@ -344,6 +344,9 @@ static inline unsigned _hash_label(const char *label, size_t size) {
   }
   return n % size;
 }
+static inline unsigned _hash_ip(const struct IP*ip,size_t size){
+  return ip->addr.v6 % size;
+}
 
 /*
  * 测试函数
