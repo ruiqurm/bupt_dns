@@ -28,6 +28,15 @@ SOFTWARE.
 #include <stdio.h>
 #include <time.h>
 
+#include<stdlib.h>
+
+#if defined(_WIN64) || defined( _WIN32)
+#include <windows.h>
+#elif __linux
+#include<errno.h>
+#endif
+
+
 static const int MAX_CALLBACK_NUM = 4;
 typedef struct {
   va_list ap;       //参数列表
@@ -59,6 +68,7 @@ static const char *LOG_LEVEL_STRING[] = {"TRACE", "DEBUG", "INFO",
             FATAL: Magenta紫色
             具体用法参考：https://www.codeproject.com/Tips/5255355/How-to-Put-Color-on-Windows-Console
  */
+
 static const char *LOG_LEVEL_COLOR[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m",
                                         "\x1b[33m", "\x1b[31m", "\x1b[35m"};
 
@@ -87,10 +97,49 @@ static const char *LOG_LEVEL_COLOR[] = {"\x1b[94m", "\x1b[36m", "\x1b[32m",
  */
 #define log_error(...) log_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 
+
+#ifdef __linux
+/**
+ * @brief 快速打印异常
+ * @param error 异常名称（用户提供）
+ */
+#define log_error_shortcut(error) log_error("%s:%s",error,strerror(errno));errno=0
+#elif defined(_WIN64) || defined( _WIN32)
+/**
+ * @brief 快速打印异常
+ * @param error 异常名称（用户提供）
+ */
+#define log_error_shortcut(error) log_error("%s:code[%d]",error,GetLastError())
+#endif
+              
 /**
  * @brief fatal等级log
  */
 #define log_fatal(...) log_log(LOG_FATAL, __FILE__, __LINE__, __VA_ARGS__)
+
+#ifdef __linux
+/**
+ * @brief 打印终止原因
+ * @param error 异常名称（用户提供）
+ */
+#define log_fatal_shortcut(error) log_fatal("%s:%s",error,strerror(errno))
+/**
+ * @brief 打印终止原因并推出
+ * @param error 异常名称（用户提供）
+ */
+#define log_fatal_exit_shortcut(error) log_fatal_shortcut(error);exit(EXIT_FAILURE)
+#elif defined(_WIN64) || defined( _WIN32)
+/**
+ * @brief 打印终止原因
+ * @param error 异常名称（用户提供）
+ */
+#define log_fatal_shortcut(error) log_fatal("%s:code[%d]",error,GetLastError())
+/**
+ * @brief 打印终止原因并退出
+ * @param error 异常名称（用户提供）
+ */
+#define log_fatal_exit_shortcut(error) log_fatal_shortcut(error);exit(EXIT_FAILURE)
+#endif
 
 // 日志函数
 void log_log(int level, const char *file, int line, const char *fmt, ...);

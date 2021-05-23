@@ -1,13 +1,18 @@
 #include "common.h"
-#include <netdb.h>
-#include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
-#include <sys/socket.h>
 #include <time.h>
+
+#ifdef __linux
 #include <unistd.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#elif _WIN64
+#pragma comment(lib,"ws2_32.lib")
+#include<ws2tcpip.h>
+#endif
 
 const unsigned int ADDR_LEN = sizeof(struct sockaddr_in);
 const unsigned int DNS_HEADER_SIZE = sizeof(struct dns_header);

@@ -8,7 +8,7 @@
  * 与其他DNS服务器通信
  */
 typedef struct sockaddr SA;
-struct sockaddr_in query_server;
+extern struct sockaddr_in query_server;
 
 /**
  * @brief 初始化,设置要询问的服务器

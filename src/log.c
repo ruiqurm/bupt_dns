@@ -1,5 +1,7 @@
 #include "log.h"
 
+
+
 /*
 锁
 */
@@ -44,10 +46,17 @@ static void stdout_callback(log_Event *ev) { //向控制台写
   char buf[64];
   buf[strftime(buf, sizeof(buf), "%H:%M:%S", ev->time)] =
       '\0'; //把日期写入buffer
+  // #if defined(_WIN64) || defined( _WIN32)
+  // fprintf(ev->udata, "%s %-5s %s:%d: ", buf,
+  //         LOG_LEVEL_STRING[ev->level], ev->file,
+  //         ev->line);
+  // // SetConsoleTextAttribute(handle, 0x7);
+  // #elif __linux
   fprintf(ev->udata, "%s \x1b[1m%s%-5s %s:%d:\x1b[0m ", buf,
           LOG_LEVEL_COLOR[ev->level], LOG_LEVEL_STRING[ev->level], ev->file,
           ev->line);
-  vfprintf(ev->udata, ev->fmt, ev->ap); //向文件输出
+  // #endif
+  vfprintf(ev->udata, ev->fmt, ev->ap); 
   fprintf(ev->udata, "\n");
   fflush(ev->udata);
 }

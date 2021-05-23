@@ -3,6 +3,8 @@
 #include <errno.h>
 #include <string.h>
 
+struct sockaddr_in query_server;
+
 void init_query_server(const char *query_server_addr) {
   memset(&query_server, 0, ADDR_LEN);
   query_server.sin_family = AF_INET;

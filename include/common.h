@@ -3,9 +3,15 @@
  * @file common.h
  * @brief 提供封装后的DNS接口
  */
-
+#ifdef __linux
 #include <arpa/inet.h>
-
+#elif defined(_WIN64) || defined( _WIN32)
+#include<ws2tcpip.h>
+#include <winsock2.h>
+#include <stdint.h>
+#pragma comment(lib,"ws2_32.lib")
+#define u_int8_t unsigned char
+#endif
 /**********
  *        *
  *   宏   *
@@ -59,13 +65,13 @@
 #define MAX_NAME_LENGTH 513
 
 // sockaddr_in的长度
-const unsigned int ADDR_LEN;
+extern const unsigned int ADDR_LEN;
 
 // DNS头部长度
-const unsigned int DNS_HEADER_SIZE;
+extern const unsigned int DNS_HEADER_SIZE;
 
 // question_struct结构体的大小
-const int QUERY_SIZE;
+extern const int QUERY_SIZE;
 
 /*************************
  *                       *
