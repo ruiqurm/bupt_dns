@@ -147,8 +147,9 @@ static inline int push_front(const char *label, const struct IP *ip,
   while (cache.used_size + record_size > MAX_LRU_CACHE) {
     pop_back(cache);
   }
+  // node = get_hash
+  node = get_node(label, &is_find);//TODO:哈希表使用
 
-  node = get_node(label, &is_find);
   if (is_find) { //找到了,但是也需要把它拉到最前面去
 
     operate_record = node->record;
@@ -167,13 +168,13 @@ static inline int push_front(const char *label, const struct IP *ip,
       abort();
       //不应该发生这种情况
     }
-    insert_record_after_node(node, &cache.records[operate_record_addr]);
+    insert_record_after_node(node, &cache.records[operate_record_addr]);//TODO:哈希表使用
 
     operate_record = &cache.records[operate_record_addr];
     operate_record_addr = operate_record_addr;
 
     strcpy(operate_record->data.label, label);
-    operate_record->id = hash_label(label);
+    operate_record->id = hash_label(label);//TODO:哈希表使用
     operate_record->valid = 1;
     cache.length++;
     cache.used_size += record_size;
@@ -207,7 +208,7 @@ void pop_back() {
       cache_stack_push(cache.last);
 
       reset(cache.records[cache.last].data.label); //移出哈希表中的字段
-
+      //TODO:哈希表使用
       cache.used_size -= record_size;
       cache.records[next_to_last].next = -1;
 
@@ -239,6 +240,7 @@ static inline void pop(struct record *record) {
     linklist_remove_node(&cache, record);
   }
   reset(record->data.label); //移出哈希表中的字段
+  //TODO:哈希表使用
   record->valid = 0;
   cache.used_size -= record_size;
   cache.length--;
@@ -250,6 +252,7 @@ struct record_data *get_cache(const char *label) {
   test_normal();
 #endif
   struct record *record = get(label);
+  //TODO:哈希表使用
   if (!record)
     return NULL;
   int now = get_record_addr(record);
@@ -281,7 +284,7 @@ struct hash_node *get_node(const char *label, bool *is_find) {
   //
   unsigned pos = hash_label(label);
   struct hash_node *node = &hash_table[pos], *last;
-  //
+  //TODO:哈希表使用
   while (node->next) { //头结点
     last = node;
     node = node->next;
@@ -306,7 +309,7 @@ struct hash_node *get_node(const char *label, bool *is_find) {
 inline static struct record *get(const char *label) {
   bool is_find;
   struct hash_node *tmp;
-  tmp = get_node(label, &is_find);
+  tmp = get_node(label, &is_find);//TODO:哈希表使用
   return (tmp != NULL) ? tmp->record : NULL;
 }
 
