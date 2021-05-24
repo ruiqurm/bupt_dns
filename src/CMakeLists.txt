@@ -5,6 +5,6 @@ include_directories(
 set(CMAKE_C_FLAGS,"-werror")
 aux_source_directory(. DIR_SRCS)
 # ADD_EXECUTABLE(dns main.c)
-add_library(cachelib STATIC cache.c)
-
+add_library(cachelib STATIC cache.c hash.c)
+add_library(hashtable STATIC hash.c)
 ADD_EXECUTABLE(dns ${DIR_SRCS})

@@ -2,8 +2,8 @@
 #include<string.h>
 #include<stdlib.h>
 #include<time.h>
+// #define DEBUG 1
 #include"cache.h"
-
 typedef struct record_data myrecord;
 myrecord records[2000];
 myrecord tmp = {"www.bupt.edu.cn",{0x12345678,IPV4}};
@@ -32,6 +32,7 @@ int main(){
     size_t now;
     for (int i =0;i<10000;i++){
         int r = rand() % 2000;
+        // printf("%d\n",i);
         if(now%500==0)now =time(NULL);
         if(r%4==0){
             set_cache((const char*)&records[r].label,&records[r].ip,records[r].ttl-now);
@@ -40,9 +41,8 @@ int main(){
         }
         // printf("%s\n",records[r].label);
         
-        // printf("%d\n",i);
+        // printf("\n");
     }
-    printf("\n");
     // printf("%d",set_cache((const char*)&records[0].label,&records[0].ip));
     // printf("%d",_cache((const char*)&records[0].label,&records[0].ip));
     return 0;

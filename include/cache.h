@@ -25,7 +25,7 @@
  * @param a 域名
  */
 
-#define hash_label(a) _hash_label(a, HASH_TABLE_LENGTH)
+// #define hash_label(a) _hash_label(a, HASH_TABLE_LENGTH)
 
 /*************************
  *                       *

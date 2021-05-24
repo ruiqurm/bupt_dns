@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include "hash.h"
 /*
  * 常量
  */
@@ -12,14 +12,14 @@
 /*
  * 全局数据和结构体
  */
-struct hash_node {
-  struct hash_node *next;
-  struct record *record;
-};
+// struct hash_node {
+//   struct hash_node *next;
+//   struct record *record;
+// };
 struct record {
   struct record_data data;
   int next, last;
-  unsigned id;
+  // unsigned id;
   bool valid;
 };
 struct link_list {
@@ -31,10 +31,11 @@ struct link_list {
   int first, last; //头指针指向第一个元素，尾指针指向新元素
   bool is_init;    //是否初始化
   struct record_data *(*get_by_label)(const char *label);
-  int (*set)(const char *label, const struct IP *ip);
+  // int (*set)(const char *label, const struct IP *ip);
+  struct hashtable label_hash;
 } cache;
 
-struct hash_node hash_table[HASH_TABLE_LENGTH];
+// struct hash_node hash_table[HASH_TABLE_LENGTH];
 
 const int record_size = sizeof(struct record);
 
@@ -42,6 +43,7 @@ const int record_size = sizeof(struct record);
  *  通用函数
  */
 static inline unsigned _hash_label(const char *label, size_t size);
+static inline bool compare_record_with_label(struct record* record,void*label2);
 
 /*
  * cache操作内部函数
@@ -58,7 +60,7 @@ static inline int push_front(const char *label, const struct IP *ip,
 static inline void pop_back();
 //通过hash获取节点
 inline static struct record *get(const char *label);
-struct hash_node *get_node(const char *label, bool *is_find);
+// struct hash_node *get_node(const char *label, bool *is_find);
 
 //在一个hash_node之后插入record
 static inline void insert_record_after_node(struct hash_node *node,
@@ -66,7 +68,7 @@ static inline void insert_record_after_node(struct hash_node *node,
 // static inline int set(struct record* record); //弃用
 
 //清空label对应的缓存
-static inline int reset(const char *label);
+// static inline int reset(const char *label);
 
 //从剩余位置栈中移除、添加
 static inline int cache_stack_pop();
@@ -94,6 +96,8 @@ void init_cache() {
   cache.stack_top = MAX_LRU_BUFFER_LENGTH - 1;
   cache.used_size = 0;
   cache.length = 0;
+  init_hashtable(&cache.label_hash,MAX_LRU_BUFFER_LENGTH,_hash_label,compare_record_with_label);
+  //TODO: 修改的地方
 }
 
 static inline int cache_stack_pop() {
@@ -128,7 +132,7 @@ static inline void linklist_remove_node(struct link_list *cache,
 static inline int is_full() {
   return (cache.length >= MAX_LRU_BUFFER_LENGTH - 1);
 }
-
+#include<stdio.h>
 static inline int push_front(const char *label, const struct IP *ip,
                              unsigned long ttl) {
   //向头插入
@@ -136,10 +140,10 @@ static inline int push_front(const char *label, const struct IP *ip,
   struct hash_node *node;
   struct record *operate_record;
   int operate_record_addr;
-
-  time_t now = time(NULL);
-  if (now >= ttl)
-    return -1;
+  // time_t now = time(NULL);
+  // if (now >= ttl)
+  //   return -1;
+  //TODO:
 
   if (is_full()) {
     pop_back(cache);
@@ -147,11 +151,11 @@ static inline int push_front(const char *label, const struct IP *ip,
   while (cache.used_size + record_size > MAX_LRU_CACHE) {
     pop_back(cache);
   }
-  // node = get_hash
-  node = get_node(label, &is_find);//TODO:哈希表使用
+  // node = get_hash_node(&cache.label_hash,label,&is_find);
+  node = set_hash_node(&cache.label_hash,label,NULL,&is_find);//暂时用NULL占位
+  // node = get_node(label, &is_find);//TODO:哈希表使用
 
   if (is_find) { //找到了,但是也需要把它拉到最前面去
-
     operate_record = node->record;
     operate_record_addr = get_record_addr(operate_record);
     if (operate_record_addr == cache.first) {
@@ -168,13 +172,15 @@ static inline int push_front(const char *label, const struct IP *ip,
       abort();
       //不应该发生这种情况
     }
-    insert_record_after_node(node, &cache.records[operate_record_addr]);//TODO:哈希表使用
+    node->record = &cache.records[operate_record_addr];
+    // insert_record_after_node(node, &cache.records[operate_record_addr]);//TODO:哈希表使用
 
     operate_record = &cache.records[operate_record_addr];
     operate_record_addr = operate_record_addr;
 
     strcpy(operate_record->data.label, label);
-    operate_record->id = hash_label(label);//TODO:哈希表使用
+    // operate_record->id = hash_label(label);//TODO:哈希表使用
+    // operate_record->id = cache.label_hash.hash(label)%cache.label_hash.size;
     operate_record->valid = 1;
     cache.length++;
     cache.used_size += record_size;
@@ -207,7 +213,8 @@ void pop_back() {
 
       cache_stack_push(cache.last);
 
-      reset(cache.records[cache.last].data.label); //移出哈希表中的字段
+      reset_hash_node(&cache.label_hash,cache.records[cache.last].data.label);
+      // reset(cache.records[cache.last].data.label); //移出哈希表中的字段
       //TODO:哈希表使用
       cache.used_size -= record_size;
       cache.records[next_to_last].next = -1;
@@ -239,7 +246,8 @@ static inline void pop(struct record *record) {
   } else {
     linklist_remove_node(&cache, record);
   }
-  reset(record->data.label); //移出哈希表中的字段
+  // reset(record->data.label); //移出哈希表中的字段
+  reset_hash_node(&cache.label_hash,record->data.label);
   //TODO:哈希表使用
   record->valid = 0;
   cache.used_size -= record_size;
@@ -248,7 +256,7 @@ static inline void pop(struct record *record) {
 }
 
 struct record_data *get_cache(const char *label) {
-#if DEBUG
+#if DEBUG==1
   test_normal();
 #endif
   struct record *record = get(label);
@@ -280,54 +288,55 @@ void clear_cache() {
   //在做了。
 }
 
-struct hash_node *get_node(const char *label, bool *is_find) {
-  //
-  unsigned pos = hash_label(label);
-  struct hash_node *node = &hash_table[pos], *last;
-  //TODO:哈希表使用
-  while (node->next) { //头结点
-    last = node;
-    node = node->next;
-    if (!strcmp(node->record->data.label, label)) {
-      time_t now = time(NULL);
-      if (now < node->record->data.ttl) {
-        if (is_find)
-          *is_find = 1;
-        return node;
-      } else {
-        pop(node->record);
-        // node成为悬浮指针
-        node = last;
-      }
-    }
-  }
-  if (is_find)
-    *is_find = 0;
-  return node;
-}
+// struct hash_node *get_node(const char *label, bool *is_find) {
+//   //
+//   unsigned pos = hash_label(label);
+//   struct hash_node *node = &hash_table[pos], *last;
+//   //TODO:哈希表使用
+//   while (node->next) { //头结点
+//     last = node;
+//     node = node->next;
+//     if (!strcmp(node->record->data.label, label)) {
+//       time_t now = time(NULL);
+//       if (now < node->record->data.ttl) {
+//         if (is_find)
+//           *is_find = 1;
+//         return node;
+//       } else {
+//         pop(node->record);
+//         // node成为悬浮指针
+//         node = last;
+//       }
+//     }
+//   }
+//   if (is_find)
+//     *is_find = 0;
+//   return node;
+// }
 
 inline static struct record *get(const char *label) {
   bool is_find;
   struct hash_node *tmp;
-  tmp = get_node(label, &is_find);//TODO:哈希表使用
+  tmp = get_hash_node(&cache.label_hash,label,&is_find);
+  // tmp = get_node(label, &is_find);//TODO:哈希表使用
   return (tmp != NULL) ? tmp->record : NULL;
 }
 
-static inline int reset(const char *label) {
-  unsigned pos = hash_label(label);
-  struct hash_node *node, *last;
-  node = &hash_table[pos];
-  while (node->next) {
-    last = node;
-    node = node->next;
-    if (!strcmp(node->record->data.label, label)) {
-      last->next = node->next;
-      free(node);
-      return 1;
-    }
-  }
-  return 0;
-}
+// static inline int reset(const char *label) {
+//   struct hash_node *node, *last;
+//   // get_hash_node(cache.label_hash,label,)
+//   node = &hash_table[pos];
+//   while (node->next) {
+//     last = node;
+//     node = node->next;
+//     if (!strcmp(node->record->data.label, label)) {
+//       last->next = node->next;
+//       free(node);
+//       return 1;
+//     }
+//   }
+//   return 0;
+// }
 
 static inline void insert_record_after_node(struct hash_node *node,
                                             struct record *record) {
@@ -351,6 +360,11 @@ static inline unsigned _hash_label(const char *label, size_t size) {
 }
 static inline unsigned _hash_ip(const struct IP*ip,size_t size){
   return ip->addr.v6 % size;
+}
+
+static inline bool compare_record_with_label(struct record* record,void*label){
+  // struct record_data* record = ()_recor
+  return !strcmp(record->data.label, label);
 }
 
 /*
