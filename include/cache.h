@@ -8,14 +8,15 @@
  *                       *
  *************************/
 
-// LRU大小
-#define MAX_LRU_BUFFER_LENGTH 1000
+// LRU链表表项数量
+#define LRU_BUFFER_LENGTH 1000
+
+//装填因子0.7
+#define CACHE_FILLING_FACTOR 0.7
 
 //缓存大小
-#define MAX_LRU_CACHE 102400 // 100K;
+#define CACHE_SIZE 102400 // 100K;
 
-//哈希表大小，这里取质数，装填因子约为0.7
-#define HASH_TABLE_LENGTH 1453
 
 //每次POP移出的项数量(测试中对性能影响不大)
 #define LRU_POP_ITEM 10

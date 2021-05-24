@@ -2,15 +2,12 @@
 #include<string.h>
 #include<stdlib.h>
 #include<time.h>
-// #define DEBUG 1
+#define DEBUG 1
 #include"cache.h"
 typedef struct record_data myrecord;
 myrecord records[2000];
 myrecord tmp = {"www.bupt.edu.cn",{0x12345678,IPV4}};
 int len = sizeof("www.bupt.edu.cn");
-// extern unsigned _hash(const char* label,size_t size);
-// extern void set_cache(const char* label,const struct IP* ip);
-
 
 
 void init_records(){
@@ -30,7 +27,7 @@ int main(){
     // printf("%d",_hash("www.baidu.com1",1000))
     init_cache();
     size_t now;
-    for (int i =0;i<10000;i++){
+    for (int i =0;i<100000;i++){
         int r = rand() % 2000;
         // printf("%d\n",i);
         if(now%500==0)now =time(NULL);
@@ -43,6 +40,7 @@ int main(){
         
         // printf("\n");
     }
+    test_normal();
     // printf("%d",set_cache((const char*)&records[0].label,&records[0].ip));
     // printf("%d",_cache((const char*)&records[0].label,&records[0].ip));
     return 0;
