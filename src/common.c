@@ -18,6 +18,34 @@ const unsigned int ADDR_LEN = sizeof(struct sockaddr_in);
 const unsigned int DNS_HEADER_SIZE = sizeof(struct dns_header);
 const int QUERY_SIZE = sizeof(struct question);
 
+const char* RRtype_to_str(int rr_type){
+  static const char buffer[120]="A\0\0\0\0"\
+                                "NS\0\0\0"\
+                                "CNAME"\
+                                "\0SOA\0"\
+                                "PTR\0\0"\
+                                "MX\0\0\0"\
+                                "AAAA\0"\
+                                "UNKNOW";
+  switch(rr_type){
+    case A:
+      return &buffer[0];
+    case NS:
+      return &buffer[5];
+    case CNAME:
+      return &buffer[10];
+    case SOA:
+      return &buffer[16];
+    case PTR:
+      return &buffer[20];
+    case MX:
+      return &buffer[25];
+    case AAAA:
+      return &buffer[30];
+    default:
+      return &buffer[35];
+  }
+}
 inline static char *skip_to_answer(char *data) {
   //跳到answer
   data += DNS_HEADER_SIZE;

@@ -22,6 +22,11 @@
 //每次POP移出的项数量(测试中对性能影响不大)
 #define LRU_POP_ITEM 10
 
+//永久
+//1<<40超过1000年
+#define DNS_CACHE_PERMANENT 1099511627776
+
+
 /**
  * @brief 哈希函数
  * @param a 域名
@@ -37,13 +42,15 @@
 
 //记录类型
 struct record_data {
-  char label[MAX_LABEL_LANGTH];
+  char label[MAX_NAME_LENGTH];
   struct IP ip;
   time_t ttl; //过期时间
+  struct record_data* next;//链表
 };
 struct record {
   struct record_data data;
   int next, last;
+  int record_data_length;
   // unsigned id;
   bool valid;
 };
@@ -58,7 +65,7 @@ typedef struct link_list {
   size_t used_size;                          //所占空间
   size_t max_size;                           //最大空间
   int first, last; //头指针指向第一个元素，尾指针指向新元素
-  // bool is_init;    //是否初始化
+  bool is_init;    //是否初始化
   // struct record_data *(*get_by_label)(const char *label);
   // int (*set)(const char *label, const struct IP *ip);
   hashtable label_hash;
@@ -69,12 +76,24 @@ typedef struct link_list {
  *                       *
  *************************/
 
+
 /**
- * @brief 初始化cache
- *
+ * @brief 初始化Cache
+ * 
+ * @param Cache Cache的地址
+ * @param record_length Cache长度
+ * @param max_size Cache最大存储空间(目前没什么用)
+ * @param filling_factor 填充因子
  */
 void init_cache(cache*Cache,int record_length,int max_size,double filling_factor);
 void init_default_cache(cache*Cache);
+
+/**
+ * @brief 释放内存
+ * 
+ * @param Cache Cache对象的地址
+ */
+void free_cache(cache*Cache);
 
 /**
  * @brief 获取cache数据

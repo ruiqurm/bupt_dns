@@ -59,10 +59,10 @@
 #define MAX_DNS_SIZE 520
 
 // DNS最大label长度(应该是63 留一个位置作结束符)
-#define MAX_LABEL_LANGTH 64
+#define MAX_LABEL_LENGTH 64
 
-// NAME最大长度（应该是512 留一个位置作结束符)
-#define MAX_NAME_LENGTH 513
+// NAME最大长度 253 留3字节
+#define MAX_NAME_LENGTH 256
 
 // sockaddr_in的长度
 extern const unsigned int ADDR_LEN;
@@ -81,6 +81,8 @@ extern const int QUERY_SIZE;
 
 // RR type
 enum RRtype { A = 1, NS = 2, CNAME = 5, SOA = 6, PTR = 12, MX = 15, AAAA = 28 };
+const char* RRtype_to_str(int rr_type);
+
 // RR class
 enum Class { HTTP_CLASS = 1, NONE_CLASS = 254, ALL_CLASS = 255 };
 
@@ -159,23 +161,24 @@ struct dns_header {
  *  @brief 用于保存DNS question数据
  */
 struct question {
+  char label[MAX_NAME_LENGTH];
   uint16_t qtype;
   uint16_t qclass;
-  char label[64];
 };
 
 /** @struct answer
  *  @brief 用于保存DNS answer数据
  */
 struct answer {
-  char name[64];
+  char name[MAX_NAME_LENGTH];
+  union {
+    struct IP address;
+    char cname[MAX_NAME_LENGTH];
+  };
   uint16_t type;
   uint16_t class_;
   uint32_t ttl;
-  union {
-    struct IP address;
-    char cname[512];
-  };
+
 };
 
 // DNS定位结构体，不用于保存数据

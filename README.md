@@ -3,14 +3,14 @@
 
 
 现在的预计工作：
+* select
+* 返回错误报文
 * 解析authority
 * 命令行
-* ipv6兼容
-* 测试固定的文件
-* select
-* cache IPV6 cname
+* 接受ipv6请求
+* 处理超长报文
 * 异常处理
-* 返回错误报文
+* cache cname
 ## 目录结构
 ```
 |  .gitignore

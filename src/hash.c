@@ -32,7 +32,7 @@ typedef void *(*HASHTABLE_reset_function)(const void*label);
 bool init_hashtable(hashtable* table,int size,double filling_factor,HASHTABLE_hash_function hash,
 HASHTABLE_compare_function compare){
   size = size / filling_factor;
-  if(filling_factor<0||filling_factor>1)return false;
+  if(filling_factor<=0||filling_factor>1)return false;
   table->filling_factor = filling_factor;
   table->size = find_smallest_prime(size);
   table->nodes = (hashnode*)calloc(table->size,sizeof(hashnode));
@@ -42,7 +42,7 @@ HASHTABLE_compare_function compare){
 }
 hashnode* get_hashnode(hashtable* table,void *label,bool*is_find){
   // #if DEBUG == 1
-  // printf("get_node:%d\n",*(int*)label);
+
   // int count =0;
   // #endif
 

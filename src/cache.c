@@ -36,7 +36,7 @@ void init_default_cache(cache*Cache);
 static inline int is_full(cache*Cache);
 //插入一条数据
 static inline int push_front(cache*Cache,const char *label, const struct IP *ip,
-                             unsigned long ttl);
+                             time_t ttl);
 //移除若干条数据
 static inline void pop_back(cache*Cache);
 //通过hash获取节点
@@ -67,8 +67,7 @@ void init_cache(cache*Cache,int record_length,int max_size,double filling_factor
   //初始化函数
   Cache->first = Cache->last = -1;
   
-  if(record_length<=0)record_length = LRU_BUFFER_LENGTH;
-  printf("%d\n",record_length);
+  if(record_length<=0)record_length = LRU_BUFFER_LENGTH; 
   Cache->max_length = record_length;
 
   Cache->records = (struct record*)calloc(record_length+1,sizeof(struct record));
@@ -88,8 +87,9 @@ void init_cache(cache*Cache,int record_length,int max_size,double filling_factor
   Cache->stack_top = record_length - 1;
   Cache->used_size = 0;
   Cache->length = 0;
-  if(filling_factor<=0||filling_factor>=1)filling_factor = CACHE_FILLING_FACTOR;
+  if(filling_factor<=0||filling_factor>1)filling_factor = CACHE_FILLING_FACTOR;
   init_hashtable(&Cache->label_hash,record_length,filling_factor,_hash_label,compare_record_with_label);
+  Cache->is_init = true;
 }
 /**
  * @brief 默认初始化
@@ -99,6 +99,7 @@ void init_default_cache(cache*Cache){
   init_cache(Cache,LRU_BUFFER_LENGTH,CACHE_SIZE,CACHE_FILLING_FACTOR);
 }
 void free_cache(cache*Cache){
+  Cache->is_init = false;
   free(Cache->records);
   free(Cache->stack);
   free_hashtable(&Cache->label_hash);
@@ -136,16 +137,18 @@ static inline int is_full(cache*Cache) {
   return (Cache->length >= Cache->max_length - 1);
 }
 static inline int push_front(cache*Cache,const char *label, const struct IP *ip,
-                             unsigned long ttl) {
+                             time_t ttl) {
   //向头插入
-  bool is_find;
+  bool is_find=false;
   hashnode *node;
   struct record *operate_record;
+  struct record_data* operate_record_data;
   int operate_record_addr;
   time_t now = time(NULL);
-  if (now >= ttl)
+  
+  if (now >= ttl){
     return -1;
-
+  }
   if (is_full(Cache)) {
     pop_back(Cache);
   }
@@ -153,7 +156,6 @@ static inline int push_front(cache*Cache,const char *label, const struct IP *ip,
     pop_back(Cache);
   }
   node = set_hashnode(&Cache->label_hash,(void*)label,NULL,&is_find);//暂时用NULL占位
-
   if (is_find) { //找到了,但是也需要把它拉到最前面去
     operate_record = node->record;
     operate_record_addr = get_record_addr(Cache,operate_record);
@@ -163,7 +165,10 @@ static inline int push_front(cache*Cache,const char *label, const struct IP *ip,
       return 1;
     }
     linklist_remove_node(Cache, operate_record);
-
+    // operate_record_data = &operate_record->data;
+    // while(->next){
+      
+    // }
   } else {
     //需要新分配一个空间
     if ((operate_record_addr = cache_stack_pop(Cache)) < 0) {
@@ -173,14 +178,13 @@ static inline int push_front(cache*Cache,const char *label, const struct IP *ip,
     node->record = &Cache->records[operate_record_addr];
     operate_record = &Cache->records[operate_record_addr];
     operate_record_addr = operate_record_addr;
-
     strcpy_s(operate_record->data.label,sizeof(operate_record->data.label),label);
     operate_record->valid = 1;
     Cache->length++;
     Cache->used_size += record_size;
   }
-
   memcpy(&operate_record->data.ip, ip, sizeof(struct IP));
+  // operate_record->data.next=NULL;
   operate_record->data.ttl = ttl;
   if (Cache->length > 1) {
     operate_record->next = Cache->first;
@@ -254,7 +258,7 @@ struct record_data *get_cache(cache* Cache,const char *label) {
   time_t timestamp = time(NULL);
   if (!record)
     return NULL;
-  if (record->data.ttl < timestamp){
+  if (record->data.ttl < timestamp && record->data.ttl != DNS_CACHE_PERMANENT){
     remove_record(Cache,record);
     return NULL;
   }

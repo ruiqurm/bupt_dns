@@ -2,14 +2,19 @@
 #include "common.h"
 #include "log.h"
 #include "relay.h"
+#include "local_record.h"
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 typedef struct sockaddr SA;
 
-void init() {
+cache global_cache;
+cache local_cache;
 
+void init() {
+  log_set_level(LOG_INFO);
+  load_local_A_record(&local_cache,"dnsrelay.txt");
   init_query_server("10.3.9.4");
   // init_cache();
   #ifdef _WIN64
@@ -20,9 +25,7 @@ void init() {
     system("chcp 65001");//修改控制台格式为65001
   #endif
 }
-// void cleanup(){
 
-// }
 int main(int argc, char **argv) {
   int sockfd;
   struct sockaddr_in servaddr,inaddr, cliaddr;
@@ -31,13 +34,13 @@ int main(int argc, char **argv) {
   char query_buffer[MAX_DNS_SIZE];
   struct dns_header header;
   struct question question;
-  struct answer ans[4];
+  struct answer ans[10];
   struct record_data *data;
   unsigned ip;
   int enable_cache;
   int _size; //临时变量
   time_t now;
-  cache global_cache;
+  
   init_default_cache(&global_cache);
   init();
 
@@ -97,12 +100,12 @@ int main(int argc, char **argv) {
     }
 
     read_dns_questions(&question, recv_buffer);
-    log_info("请求 %s",question.label);
+    log_info("%s %s",RRtype_to_str(question.qtype),question.label);
     switch (question.qtype) {
     case A:
-      // case AAAA:
+    // case AAAA:
       enable_cache = 1;
-      //只处理这几个
+      //只缓存A记录
       break;
     default:
       enable_cache = 0;
@@ -112,8 +115,9 @@ int main(int argc, char **argv) {
       relay(header.id, &question, recv_buffer, sockfd, &cliaddr);
       continue;
     }
-    if ((data = get_cache(&global_cache,question.label))) {
-      log_debug("取到缓存");
+    if ((data = get_cache(&local_cache,question.label))||
+         (data = get_cache(&global_cache,question.label))) {
+      log_info("取到缓存");
       // sprint_dns(recv_buffer);
       now = time(NULL);
       ans[0].ttl = data->ttl - now;
@@ -130,10 +134,11 @@ int main(int argc, char **argv) {
         log_info("成功回复");
       }
     } else {
-      log_debug("未取到缓存");
+      log_info("未取到缓存");
       _size = query(question.label, question.qtype, query_buffer);
       if (_size>0){
         int _ans_num = read_dns_answers(ans, query_buffer);
+        log_info("ans_num: %d\n",_ans_num);
         struct dns_header *pheader;
         if (_ans_num > 0) {
           now = time(NULL);
@@ -141,6 +146,7 @@ int main(int argc, char **argv) {
         }
         pheader = (struct dns_header *)query_buffer;
         pheader->id = htons(header.id);
+        printf("%d\n",sizeof(query_buffer));
         if (sendto(sockfd, query_buffer, _size, 0, (SA *)&cliaddr,
                   sizeof(cliaddr)) < 0) {
           log_error_shortcut("send error");
