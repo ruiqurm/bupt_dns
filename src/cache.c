@@ -30,8 +30,8 @@ struct link_list {
   size_t length;                             //队列长度
   size_t used_size;                          //所占空间
   int first, last; //头指针指向第一个元素，尾指针指向新元素
-  bool is_init;    //是否初始化
-  struct record_data *(*get_by_label)(const char *label);
+  // bool is_init;    //是否初始化
+  // struct record_data *(*get_by_label)(const char *label);
   // int (*set)(const char *label, const struct IP *ip);
   hashtable label_hash;
 } cache;
