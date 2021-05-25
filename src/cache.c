@@ -159,16 +159,21 @@ static inline int push_front(cache*Cache,const char *label, const struct IP *ip,
   if (is_find) { //找到了,但是也需要把它拉到最前面去
     operate_record = node->record;
     operate_record_addr = get_record_addr(Cache,operate_record);
+    operate_record_data = &operate_record->data;
+    
+    //找到最后一个元素，并分配一个空间
+    while(operate_record_data->next){
+      operate_record_data = operate_record_data->next;
+    }
+    operate_record_data =  operate_record_data->next = (struct record_data*)malloc(sizeof(struct record_data));
+    
+    //如果本来就是第一个，后面就不需要做了
     if (operate_record_addr == Cache->first) {
-      //本来就是第一个
-      memcpy(&operate_record->data.ip, ip, sizeof(struct IP));
+      memcpy(&operate_record_data->ip, ip, sizeof(struct IP));
       return 1;
     }
+    //否则就要把节点先切出来
     linklist_remove_node(Cache, operate_record);
-    // operate_record_data = &operate_record->data;
-    // while(->next){
-      
-    // }
   } else {
     //需要新分配一个空间
     if ((operate_record_addr = cache_stack_pop(Cache)) < 0) {
@@ -177,15 +182,19 @@ static inline int push_front(cache*Cache,const char *label, const struct IP *ip,
     }
     node->record = &Cache->records[operate_record_addr];
     operate_record = &Cache->records[operate_record_addr];
+    operate_record_data = &operate_record->data;
     operate_record_addr = operate_record_addr;
     strcpy_s(operate_record->data.label,sizeof(operate_record->data.label),label);
     operate_record->valid = 1;
+    operate_record->record_data_length = 0;
     Cache->length++;
     Cache->used_size += record_size;
   }
   memcpy(&operate_record->data.ip, ip, sizeof(struct IP));
-  // operate_record->data.next=NULL;
+  operate_record->data.next=NULL;
   operate_record->data.ttl = ttl;
+  operate_record->record_data_length++;
+
   if (Cache->length > 1) {
     operate_record->next = Cache->first;
     operate_record->last = LRU_BUFFER_HEAD_POINT;
@@ -204,14 +213,36 @@ static inline int push_front(cache*Cache,const char *label, const struct IP *ip,
 void pop_back(cache* Cache) {
   //移除若干条数据
   int t = LRU_POP_ITEM;
+  struct record_data*pd,*tmp;
+  int count =0;
   while ((t--)) {
     if (Cache->length > 0) {
+      
+      //移除n-1的缓存空间(第一个不需要释放)
+      count = Cache->records[Cache->last].record_data_length-1;
+      pd = Cache->records[Cache->last].data.next;//第一个空间不需要释放
+      while(pd&&count){
+        tmp=pd;
+        pd=pd->next;
+        free(tmp);
+        count--;
+      }
+      if(pd!=NULL){
+        fprintf(stderr,"record_data link error!\n");
+        exit(EXIT_FAILURE);
+      }
+      
+      //重新链接大链表
       int next_to_last = Cache->records[Cache->last].last; //最后一个的上一个
       Cache->records[Cache->last].valid = 0;
 
+      //压入可选栈
       cache_stack_push(Cache,Cache->last);
 
+      //重置hash表
       reset_hash_node(&Cache->label_hash,Cache->records[Cache->last].data.label);
+      
+      //重新链接大链表
       Cache->used_size -= record_size;
       Cache->records[next_to_last].next = -1;
 
@@ -227,8 +258,23 @@ void pop_back(cache* Cache) {
   }
 }
 static inline void remove_record(cache* Cache,struct record *record) {
-  int addr = get_record_addr(Cache,record);
+  int addr = get_record_addr(Cache,record),count;
   int substitute_addr;
+  struct record_data*pd,*tmp;
+  
+  //移除n-1个空间
+  count = Cache->records[Cache->last].record_data_length-1;
+  pd = Cache->records[Cache->last].data.next;//第一个空间不需要释放
+  while(pd&&count){
+    tmp=pd;
+    pd=pd->next;
+    free(tmp);
+    count--;
+  }
+  if(pd!=NULL){
+    fprintf(stderr,"record_data link error!\n");
+    exit(EXIT_FAILURE);
+  }
 
   if (addr == Cache->last) {
     substitute_addr = Cache->records[Cache->last].last;
@@ -242,7 +288,8 @@ static inline void remove_record(cache* Cache,struct record *record) {
   } else {
     linklist_remove_node(Cache, record);
   }
-  // reset(record->data.label); //移出哈希表中的字段
+
+
   reset_hash_node(&Cache->label_hash,record->data.label);
   record->valid = 0;
   Cache->used_size -= record_size;

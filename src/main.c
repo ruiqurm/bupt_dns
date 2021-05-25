@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
         }
         pheader = (struct dns_header *)query_buffer;
         pheader->id = htons(header.id);
-        printf("%d\n",sizeof(query_buffer));
+        // printf("%d\n",sizeof(query_buffer));
         if (sendto(sockfd, query_buffer, _size, 0, (SA *)&cliaddr,
                   sizeof(cliaddr)) < 0) {
           log_error_shortcut("send error");
