@@ -20,7 +20,7 @@ int main(int argc,char**argv){
     // bool check[TEST_SIZE];
     bool* check = malloc(sizeof(bool)*TEST_SIZE);
     tdata* data = malloc(sizeof(tdata)*TEST_SIZE);
-    memset(check,0,sizeof(check));
+    memset(check,false,sizeof(bool)*TEST_SIZE);
     hashtable table;
     if (init_hashtable(&table,TABLE_SIZE,0.7,hash,compare)==false){
         exit(EXIT_FAILURE);

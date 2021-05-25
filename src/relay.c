@@ -8,7 +8,7 @@ void init_query_server(const char *query_server_addr) {
   memset(&query_server, 0, ADDR_LEN);
   query_server.sin_family = AF_INET;
   query_server.sin_port = htons(DNS_SERVER_PORT);
-  query_server.sin_addr.s_addr = inet_addr(query_server_addr);
+  inet_pton(AF_INET,query_server_addr,&query_server.sin_addr.s_addr);
 }
 
 int query(char questions[], int type, char buffer[MAX_DNS_SIZE]) {
@@ -33,7 +33,7 @@ int query(char questions[], int type, char buffer[MAX_DNS_SIZE]) {
   total_size = write_dns_query(buffer, questions, type);
   if (sendto(sockfd, (char *)buffer, total_size, 0, (SA *)&query_server,
              ADDR_LEN)<0) {
-    log_error("sendto error: %s", strerror(errno));
+    log_error_shortcut("sendto error");
     return -1;
   }
   
@@ -62,8 +62,7 @@ void relay(int id, struct question *question, char buffer[MAX_DNS_SIZE],
   header = (struct dns_header *)buffer;
   header->id = htons(id);
   if (sendto(sockfd, buffer, size, 0, (SA *)target, sizeof(*target)) < 0) {
-    log_error("sendto error:%s", strerror(errno));
-    errno = 0;
+    log_error_shortcut("sendto error:");
   } else {
     log_info("成功回复");
   }

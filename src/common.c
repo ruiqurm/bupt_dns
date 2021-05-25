@@ -465,7 +465,7 @@ inline static const char *bit_to_str(unsigned char val, int num) {
   b[0] = '\0';
   int z;
   for (z = 1 << (num - 1); z > 0; z >>= 1) {
-    strcat(b, ((x & z) == z) ? "1" : "0");
+    strcat_s(b,9, ((x & z) == z) ? "1" : "0");
   }
 
   return b;

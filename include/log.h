@@ -167,7 +167,7 @@ void log_set_quiet(bool enable);
  *
  * @param filename 文件名称
  */
-void filelog_init(const char *filename);
+bool filelog_init(const char *filename);
 
 /**
  * @brief 文件log关闭

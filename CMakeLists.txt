@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required (VERSION 2.8...3.20.0)
 project(bupt_dns)
+set(CMAKE_C_STANDARD 11)
 # SET(CMAKE_C_COMPILER /usr/bin/clang)
 
 include_directories(
@@ -10,6 +11,5 @@ add_subdirectory(src)
 
 enable_testing()
 add_subdirectory(test)
-add_test(NAME Mytest COMMAND Test)
 
 

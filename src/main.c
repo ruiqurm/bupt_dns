@@ -11,7 +11,7 @@ typedef struct sockaddr SA;
 void init() {
 
   init_query_server("10.3.9.4");
-  init_cache();
+  // init_cache();
   #ifdef _WIN64
     WSADATA wsaData;
     if(WSAStartup(MAKEWORD(2,2),&wsaData)!=0){
@@ -37,7 +37,8 @@ int main(int argc, char **argv) {
   int enable_cache;
   int _size; //临时变量
   time_t now;
-
+  cache global_cache;
+  init_default_cache(&global_cache);
   init();
 
   clilen = sizeof(cliaddr);
@@ -111,7 +112,7 @@ int main(int argc, char **argv) {
       relay(header.id, &question, recv_buffer, sockfd, &cliaddr);
       continue;
     }
-    if ((data = get_cache(question.label))) {
+    if ((data = get_cache(&global_cache,question.label))) {
       log_debug("取到缓存");
       // sprint_dns(recv_buffer);
       now = time(NULL);
@@ -136,7 +137,7 @@ int main(int argc, char **argv) {
         struct dns_header *pheader;
         if (_ans_num > 0) {
           now = time(NULL);
-          set_cache(ans[0].name, &ans[0].address, ans[0].ttl + now);
+          set_cache(&global_cache,ans[0].name, &ans[0].address, ans[0].ttl + now);
         }
         pheader = (struct dns_header *)query_buffer;
         pheader->id = htons(header.id);
