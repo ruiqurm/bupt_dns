@@ -127,8 +127,8 @@ void free_cache(cache*Cache){
   Cache->is_init = false;
   for(int i=0;i<Cache->max_length;i++){
     if(Cache->records[i].valid){
-      printf("1\n");
-      // Cache->realse(&Cache->records[i]);
+      // printf("1\n");
+      Cache->realse(&Cache->records[i]);
     }
   }
   free(Cache->records);
@@ -269,13 +269,13 @@ void pop_back(cache* Cache) {
       cache_stack_push(Cache,Cache->last);
 
       //重置hash表
-      bool is_find;
-      get_hashnode(&Cache->label_hash,Cache->get_label(&Cache->records[Cache->last]),&is_find);
-      if(is_find){
-        printf("ok");
-      }else{
-        printf("error");
-      }
+      // bool is_find;
+      // get_hashnode(&Cache->label_hash,Cache->get_label(&Cache->records[Cache->last]),&is_find);
+      // if(is_find){
+      //   printf("ok");
+      // }else{
+      //   printf("error");
+      // }
       reset_hash_node(&Cache->label_hash,Cache->get_label(&Cache->records[Cache->last]));
       // puts(Cache->get_label(&Cache->records[Cache->last]));
       Cache->realse(&Cache->records[Cache->last]);
@@ -356,6 +356,12 @@ int set_cache_A_record(cache*Cache,const char *label, void*data) {
     #ifdef LOG_INCLUDED
     log_debug("set cache ;label= %s",((struct record_data*)data)->label);
     #endif 
+    if(record->record_data_length>0){
+      #ifdef LOG_INCLUDED
+      log_debug("length>0");
+      #endif
+      Cache->realse(record);
+    }
     return Cache->add(record,data);
   }else{
     return 0;
@@ -393,6 +399,7 @@ int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size
 }
 void realse_A_record(struct record*data){
     int count = data->record_data_length;
+    // printf("%d\n",count);
     struct record_data *pd = data->data,*tmp;
     #ifdef LOG_INCLUDED
     log_debug("realse a record;label= %s,length = %d,ip = %d",
@@ -436,7 +443,6 @@ bool add_A_record(struct record*record,void*data){
     #endif 
     tmp = ((struct record_data*)record->data)->next;
     memcpy_s(record->data,sizeofstruct,data,sizeofstruct);//覆盖原数据
-    strcpy_s(((struct record_data*)record->data)->label,MAX_NAME_LENGTH,((struct record_data*)data)->label);//复制name
     ((struct record_data*)record->data)->next=tmp;
   }else{
     record->record_data_length = 1;
