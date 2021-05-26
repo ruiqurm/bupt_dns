@@ -5,7 +5,7 @@
 cache local;
 bool _check(const char *q,const char* a){
     static char buffer[256];
-    struct record_data *pdata = get_cache(&local,q);
+    struct record_data *pdata = get_cache_A_record(&local,q);
     if(pdata){
         inet_ntop(AF_INET,&pdata->ip, buffer, sizeof(buffer));
         if(pdata!=NULL && !strcmp(buffer,a)){

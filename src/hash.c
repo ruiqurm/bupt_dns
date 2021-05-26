@@ -48,9 +48,16 @@ hashnode* get_hashnode(hashtable* table,void *label,bool*is_find){
 
   unsigned pos = table->hash(label) % table->size;
   hashnode * node= &table->nodes[pos],*last;
+  // printf("pos=%d\n",pos);
+  if((struct record*)node->record){
+    printf("error!");
+    exit(0);
+  }
+  // printf(" has next %d\n",node->next);
   while (node->next) { //头结点
     last = node;
     node = node->next;
+    // printf("check %lld\n",node->record);
     if (table->compare(node->record,label)) {
        if (is_find){
          *is_find = 1;
@@ -93,7 +100,8 @@ hashnode* set_hashnode(hashtable* table,void *label,void*record,
   if (is_find){
     if(record!=NULL)node->record = record;
   }else{
-    node = node->next = (hashnode *)malloc(sizeof(hashnode));
+    node->next = (hashnode *)malloc(sizeof(hashnode));
+    node = node->next;
     node->next = NULL;//现在node是最后一个节点
     // node->id = table->hash(label) % table->size;
     //！！！即使record==NULL也会照样赋值。

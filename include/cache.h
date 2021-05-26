@@ -42,18 +42,25 @@
 
 //记录类型
 struct record_data {
-  char label[MAX_NAME_LENGTH];
+  char *label;
   struct IP ip;
   time_t ttl; //过期时间
   struct record_data* next;//链表
 };
 struct record {
-  struct record_data data;
+  // void* data;
+  void* data;
   int next, last;
   int record_data_length;
-  // unsigned id;
+  // char label[MAX_NAME_LENGTH];
   bool valid;
 };
+
+typedef void (*realse_data)(struct record*data);
+typedef bool (*add_data)(struct record*record,void*data);
+typedef int (*add_multi_data)(struct record*record,void*data[],int size);
+typedef bool (*check_data)(struct record*data);
+typedef void* (*get_data_label)(struct record*data);
 typedef struct link_list {
   // struct record records[LRU_BUFFER_LENGTH + 1];
   // unsigned int stack[LRU_BUFFER_LENGTH]; //剩余位置栈
@@ -69,6 +76,11 @@ typedef struct link_list {
   // struct record_data *(*get_by_label)(const char *label);
   // int (*set)(const char *label, const struct IP *ip);
   hashtable label_hash;
+  realse_data realse;
+  add_data add;
+  add_multi_data add_multi;
+  check_data check;
+  get_data_label get_label;
 } cache;
 /*************************
  *                       *
@@ -85,8 +97,14 @@ typedef struct link_list {
  * @param max_size Cache最大存储空间(目前没什么用)
  * @param filling_factor 填充因子
  */
-void init_cache(cache*Cache,int record_length,int max_size,double filling_factor);
-void init_default_cache(cache*Cache);
+void init_cache(cache*Cache,int record_length,int max_size,double filling_factor,
+               realse_data realse,add_data add,add_multi_data add_multi,
+               check_data check,get_data_label get_label);
+
+
+void init_A_record_cache_default(cache*Cache);
+void init_A_record_cache(cache*Cache,int record_length,int max_size,double filling_factor);
+//A记录with cname
 
 /**
  * @brief 释放内存
@@ -101,7 +119,7 @@ void free_cache(cache*Cache);
  * @param label 标签
  * @return record_data 结构体
  */
-struct record_data *get_cache(cache* Cache,const char *label);
+struct record_data *get_cache_A_record(cache* Cache,const char *label);
 
 /**
  * @brief cache放入数据
@@ -111,7 +129,10 @@ struct record_data *get_cache(cache* Cache,const char *label);
  * @param ttl time to live
  * @return 返回1则成功，否则失败
  */
-int set_cache(cache*Cache,const char *label, const struct IP *ip, time_t ttl);
+int set_cache_A_record(cache*Cache,const char *label, void*data);
+int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size);
+
+// int set_cache_A_record(cache*Cache,const char *label, const struct IP *ip, time_t ttl);
 
 // /**
 //  * @brief 清除cache

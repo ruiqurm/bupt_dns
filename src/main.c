@@ -7,7 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
+#define _CRT_SECURE_NO_WARNINGS
 typedef struct sockaddr SA;
+
 
 cache global_cache;
 cache local_cache;
@@ -24,6 +27,13 @@ void init() {
     }
     system("chcp 65001");//修改控制台格式为65001
   #endif
+  #ifdef __linux
+    struct sigaction sa;
+    sa.sa_handler = SIG_IGN;
+    sigaction( SIGPIPE, &sa, 0 );
+    //忽略管道破裂
+  #endif
+  // signal(SIGINT,handle_)
 }
 
 int main(int argc, char **argv) {
@@ -35,13 +45,14 @@ int main(int argc, char **argv) {
   struct dns_header header;
   struct question question;
   struct answer ans[10];
+  struct record_data tmp_ans_data[10];
   struct record_data *data;
   unsigned ip;
   int enable_cache;
   int _size; //临时变量
   time_t now;
   
-  init_default_cache(&global_cache);
+  init_A_record_cache_default(&global_cache);
   init();
 
   clilen = sizeof(cliaddr);
@@ -115,17 +126,24 @@ int main(int argc, char **argv) {
       relay(header.id, &question, recv_buffer, sockfd, &cliaddr);
       continue;
     }
-    if ((data = get_cache(&local_cache,question.label))||
-         (data = get_cache(&global_cache,question.label))) {
+    if ((data = get_cache_A_record(&local_cache,question.label))||
+         (data = get_cache_A_record(&global_cache,question.label))) {
       log_info("取到缓存");
       // sprint_dns(recv_buffer);
       now = time(NULL);
-      ans[0].ttl = data->ttl - now;
-      memcpy(&ans[0].address, &data->ip, sizeof(struct IP));
-      strcpy_s(ans[0].name, sizeof(ans[0].name),question.label);
-      ans[0].type = question.qtype;
-      ans[0].class_ = question.qclass;
-      _size = write_dns_response_by_query(recv_buffer, ans, 1);
+      int count=0;
+      while(data){
+        ans[count].ttl = data->ttl - now;
+        memcpy(&ans[count].address, &data->ip, sizeof(struct IP));
+        strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
+        ans[count].type = question.qtype;
+        ans[count].class_ = question.qclass;
+        ans[count].has_cname = false;
+        strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
+        count++;
+        data=data->next;
+      }
+      _size = write_dns_response_by_query(recv_buffer, ans, count);
       // sprint_dns(query_buffer);
       if (sendto(sockfd, recv_buffer, _size, 0, (SA *)&cliaddr,
                  sizeof(cliaddr)) < 0) {
@@ -141,9 +159,24 @@ int main(int argc, char **argv) {
         log_info("ans_num: %d\n",_ans_num);
         struct dns_header *pheader;
         if (_ans_num > 0) {
+          int count =0;
+          struct record_data* send_data[10];
           now = time(NULL);
-          set_cache(&global_cache,ans[0].name, &ans[0].address, ans[0].ttl + now);
+          for(int i=0;i<_ans_num;i++){
+            if(ans[i].type==A){
+              memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP));
+              tmp_ans_data[count].label = ans[i].name;
+              tmp_ans_data[count].ttl = now + ans[i].ttl;
+              send_data[count] = &tmp_ans_data[count];
+              count++;
+            }
+          }
+          log_info("count:%d",count);
+          if(count>0){
+            set_cache_A_multi_record(&global_cache,tmp_ans_data[0].label,(void**)send_data,count);
+          }
         }
+  
         pheader = (struct dns_header *)query_buffer;
         pheader->id = htons(header.id);
         // printf("%d\n",sizeof(query_buffer));

@@ -9,6 +9,7 @@
 #include<ws2tcpip.h>
 #include <winsock2.h>
 #include <stdint.h>
+#include<stdbool.h>
 #pragma comment(lib,"ws2_32.lib")
 #define u_int8_t unsigned char
 #endif
@@ -171,14 +172,12 @@ struct question {
  */
 struct answer {
   char name[MAX_NAME_LENGTH];
-  union {
-    struct IP address;
-    char cname[MAX_NAME_LENGTH];
-  };
+  struct IP address;
+  char cname[MAX_NAME_LENGTH];
   uint16_t type;
   uint16_t class_;
   uint32_t ttl;
-
+  bool has_cname;
 };
 
 // DNS定位结构体，不用于保存数据
