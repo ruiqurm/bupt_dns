@@ -36,4 +36,4 @@ int query(char questions[], int type, char buffer[MAX_DNS_SIZE]);
  * @param target 目标ip地址
  */
 void relay(int id, struct question *question, char buffer[MAX_DNS_SIZE],
-           int sockfd, struct sockaddr_in *target);
+           int sockfd, struct sockaddr *target);

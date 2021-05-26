@@ -38,7 +38,9 @@ void init() {
 
 int main(int argc, char **argv) {
   int sockfd;
-  struct sockaddr_in servaddr,inaddr, cliaddr;
+  // struct sockaddr_in servaddr,inaddr, cliaddr;
+  struct  sockaddr_in6 servaddr,cliaddr;
+
   socklen_t len, clilen;
   char recv_buffer[MAX_DNS_SIZE];
   char query_buffer[MAX_DNS_SIZE];
@@ -47,7 +49,8 @@ int main(int argc, char **argv) {
   struct answer ans[10];
   struct record_data tmp_ans_data[10];
   struct record_data *data;
-  unsigned ip;
+  // unsigned ip;
+  WORD* ip;
   int enable_cache;
   int _size; //临时变量
   time_t now;
@@ -56,15 +59,23 @@ int main(int argc, char **argv) {
   init();
 
   clilen = sizeof(cliaddr);
-  sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+  // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+  sockfd = socket(PF_INET6, SOCK_DGRAM, 0);//ipv6
+  int no = 0;     
+  if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no))==INVALID_SOCKET){
+    log_error_shortcut("set ipv6 only off:");
+  }
   if (sockfd == INVALID_SOCKET){
     log_fatal_exit_shortcut("socket error");
 		exit(0);
 	}
   memset(&servaddr, 0, sizeof(servaddr));
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  servaddr.sin_port = htons(DNS_SERVER_PORT);
+  // servaddr.sin_family = AF_INET;
+  servaddr.sin6_family = AF_INET6;
+  // servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  servaddr.sin6_addr = in6addr_any;
+  // servaddr.sin_port = htons(DNS_SERVER_PORT);
+  servaddr.sin6_port = htons(DNS_SERVER_PORT);
 
   // int nMode = 1; // 1: NON-BLOCKING
   // if (ioctlsocket (sockfd, FIONBIO, &nMode) == SOCKET_ERROR)
@@ -98,11 +109,13 @@ int main(int argc, char **argv) {
       log_info("%d",len);
       continue;
     }
-    ip = cliaddr.sin_addr.s_addr; //!不需要翻过来
-    log_info("Recvfrom %d:%d:%d:%d:port:%d ", *(char *)&ip,
-             *(((char *)&ip) + 1), *(((char *)&ip) + 2), *(((char *)&ip) + 3),
-             ntohs(cliaddr.sin_port));
-
+    ip = cliaddr.sin6_addr.u.Word; //!不需要翻过来
+    // ip = cliaddr.sin_addr.s_addr; //!不需要翻过来
+    // log_info("Recvfrom %d:%d:%d:%d:port:%d ", *(char *)&ip,
+    //          *(((char *)&ip) + 1), *(((char *)&ip) + 2), *(((char *)&ip) + 3),
+    //          ntohs(cliaddr.sin_port));
+    log_info("Recvfrom %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x port:%d ",
+          ip[0],ip[1],ip[2],ip[3],ip[4],ip[5],ip[6],ip[7],ntohs(cliaddr.sin6_port));
     read_dns_header(&header, recv_buffer);
     // sprint_dns(recv_buffer);
     if (header.flags != htons(FLAG_QUERY)) {
@@ -123,7 +136,7 @@ int main(int argc, char **argv) {
       break;
     }
     if (!enable_cache) {
-      relay(header.id, &question, recv_buffer, sockfd, &cliaddr);
+      relay(header.id, &question, recv_buffer, sockfd, (SA*)&cliaddr);
       continue;
     }
     if ((data = get_cache_A_record(&local_cache,question.label))||
