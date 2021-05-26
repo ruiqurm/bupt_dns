@@ -11,13 +11,15 @@
 #define _CRT_SECURE_NO_WARNINGS
 typedef struct sockaddr SA;
 
-
-cache global_cache;
-cache local_cache;
+struct cacheset cacheset;//缓存
 
 void init() {
   log_set_level(LOG_INFO);
-  load_local_A_record(&local_cache,"dnsrelay.txt");
+
+  load_local_A_record(&cacheset.A.local,"dnsrelay.txt");
+  init_A_record_cache_default(&cacheset.A.temp);
+  init_A_record_cache_default(&cacheset.AAAA.temp);
+
   init_query_server("10.3.9.4");
   // init_cache();
   #ifdef _WIN64
@@ -55,7 +57,7 @@ int main(int argc, char **argv) {
   int _size; //临时变量
   time_t now;
   
-  init_A_record_cache_default(&global_cache);
+  
   init();
 
   clilen = sizeof(cliaddr);
@@ -136,11 +138,11 @@ int main(int argc, char **argv) {
       break;
     }
     if (!enable_cache) {
-      relay(header.id, &question, recv_buffer, sockfd, (SA*)&cliaddr);
+      relay(header.id, &question, recv_buffer, sockfd, &cliaddr);
       continue;
     }
-    if ((data = get_cache_A_record(&local_cache,question.label))||
-         (data = get_cache_A_record(&global_cache,question.label))) {
+    if ((data = get_cache_A_record(&cacheset.A.local,question.label))||
+         (data = get_cache_A_record(&cacheset.A.temp,question.label))) {
       log_info("取到缓存");
       // sprint_dns(recv_buffer);
       now = time(NULL);
@@ -186,7 +188,7 @@ int main(int argc, char **argv) {
           }
           log_info("count:%d",count);
           if(count>0){
-            set_cache_A_multi_record(&global_cache,tmp_ans_data[0].label,(void**)send_data,count);
+            set_cache_A_multi_record(&cacheset.A.temp,tmp_ans_data[0].label,(void**)send_data,count);
           }
         }
   

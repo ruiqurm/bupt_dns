@@ -49,7 +49,7 @@ int query(char questions[], int type, char buffer[MAX_DNS_SIZE]) {
 }
 
 void relay(int id, struct question *question, char buffer[MAX_DNS_SIZE],
-           int sockfd, struct sockaddr *target) {
+           int sockfd, struct sockaddr_in6 *target) {
   //中继
   int size;
   struct dns_header *header;

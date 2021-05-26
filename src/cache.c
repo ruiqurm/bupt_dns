@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "hash.h"
-// #include "log.h"
+#include "log.h"
 /*
  * 常量
  */
@@ -124,16 +124,18 @@ void init_A_record_cache(cache*Cache,int record_length,int max_size,double filli
 }
 
 void free_cache(cache*Cache){
-  Cache->is_init = false;
-  for(int i=0;i<Cache->max_length;i++){
-    if(Cache->records[i].valid){
-      // printf("1\n");
-      Cache->realse(&Cache->records[i]);
+  if(Cache->is_init==true){
+    Cache->is_init = false;
+    for(int i=0;i<Cache->max_length;i++){
+      if(Cache->records[i].valid){
+        // printf("1\n");
+        Cache->realse(&Cache->records[i]);
+      }
     }
+    free(Cache->records);
+    free(Cache->stack);
+    free_hashtable(&Cache->label_hash);
   }
-  free(Cache->records);
-  free(Cache->stack);
-  free_hashtable(&Cache->label_hash);
 }
 static inline int cache_stack_pop(cache*Cache) {
   if (Cache->stack_top > 0) {
@@ -325,6 +327,10 @@ static inline void remove_record(cache* Cache,struct record *record) {
 }
 
 struct record_data *get_cache_A_record(cache* Cache,const char *label) {
+  if(Cache->is_init==false){
+    log_error("cache not init");
+    return NULL;
+  }
   struct record *record = get(Cache,label);
   if (!record)
     return NULL;
@@ -351,6 +357,10 @@ struct record_data *get_cache_A_record(cache* Cache,const char *label) {
   return (struct record_data *)record->data;
 }
 int set_cache_A_record(cache*Cache,const char *label, void*data) {
+  if(Cache->is_init==false){
+    log_error("cache not init");
+    return -1;
+  }
   struct record* record = push_front(Cache,label);//预留空间
   if(record){
     #ifdef LOG_INCLUDED
@@ -368,6 +378,10 @@ int set_cache_A_record(cache*Cache,const char *label, void*data) {
   }
 }
 int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size) {
+  if(Cache->is_init==false){
+    log_error("cache not init");
+    return -1;
+  }
   struct record* record = push_front(Cache,label);//预留空间
   // log_info("%lld\n",record);
   if(record){

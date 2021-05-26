@@ -82,6 +82,16 @@ typedef struct link_list {
   check_data check;
   get_data_label get_label;
 } cache;
+
+struct cacheCompound{
+  cache temp;//临时
+  cache local;//本地
+};
+
+struct cacheset{
+  struct cacheCompound A;
+  struct cacheCompound AAAA;
+};//cache集
 /*************************
  *                       *
  *        函数接口        *
