@@ -59,3 +59,9 @@ cmake ..
 执行build/src/dns.exe即可
 
 
+## 命令行解析
+1. 加载 dnsrelay.txt
+2. 设置 cache 大小
+3. help
+4. debug
+5. 设置服务器

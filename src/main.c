@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
 
   // fileno
   
-  init();
+  init(argc,argv);
 
   clilen = sizeof(cliaddr);
   // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
