@@ -5,5 +5,5 @@
  */
 
 #include<stdbool.h>
-
-bool read_local_record(const char* filename);
+#include"cache.h"
+bool load_local_A_record(cache *Cache,const char* filename);
