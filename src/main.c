@@ -93,6 +93,14 @@ int main(int argc, char **argv) {
     // sprint_dns(recv_buffer);
     if (header.flags != htons(FLAG_QUERY)) {
       //不是询问，也丢弃
+      struct dns_header* buffer_=(struct dns_header*) recv_buffer;
+      buffer_->rcode=5;
+      if (sendto(sockfd, recv_buffer, rec , 0,(SA *)&cliaddr,
+                 sizeof(cliaddr)) < 0) {
+        log_error_shortcut("sendto error:");
+      } else {
+        log_info("成功回复");
+      }
       continue;
     }
 
