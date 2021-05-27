@@ -17,14 +17,62 @@ typedef WORD unsigned short
 
 struct cacheset cacheset;//缓存
 
-void init() {
-  log_set_level(LOG_INFO);
-
-  load_local_A_record(&cacheset.A.local,"dnsrelay.txt");
+void init(int argc,char **argv) {
+  char x[5][4]={"-d","-s","-f","-n","-dd"};
+  int debug_lev=0,catch_num=0,dns_server=0,file=0;
+  for(int i=1;i<argc;i++){
+    if(!strcmp(argv[i],"-d")){
+      if(!debug_lev){
+        debug_lev=1;
+      }
+      else{
+        exit(0);
+      }
+    }
+    else if(!strcmp(argv[i],"-dd")){
+      if(!debug_lev){
+        debug_lev=2;
+      }
+      else{
+        exit(0);
+      }
+    }
+    else if(!strcmp(argv[i],"-f")){
+      if(i==argc-1){
+        exit(0);
+      }
+      else{
+        file=++i;
+      }
+    }
+    else if(!strcmp(argv[i],"-s")){
+      if(i==argc-1){
+        exit(0);
+      }
+      else{
+        
+        dns_server=++i;
+      }
+    }
+    else if(!strcmp(argv[i],"-n")){
+      if(i==argc-1){
+          exit(0);
+      }
+      else{
+        catch_num=atoi(argv[++i]);
+      }
+    }
+    else{
+        exit(0);
+    }
+  }
+  
+  log_set_level(debug_lev!=0?debug_lev:2);
+  load_local_A_record(&cacheset.A.local,file==0?"dnsrelay.txt":argv[file]);
   init_A_record_cache_default(&cacheset.A.temp);
   init_A_record_cache_default(&cacheset.AAAA.temp);
 
-  init_query_server("10.3.9.4");
+  init_query_server(dns_server==0?"10.3.9.4":argv[dns_server]);
   // init_cache();
   #ifdef _WIN64
     WSADATA wsaData;
@@ -43,8 +91,8 @@ void init() {
 int main(int argc, char **argv) {
   int sockfd;
   // struct sockaddr_in servaddr,inaddr, cliaddr;
+  
   struct  sockaddr_in6 servaddr,cliaddr;
-
   socklen_t len, clilen;
   char recv_buffer[MAX_DNS_SIZE];
   char query_buffer[MAX_DNS_SIZE];
@@ -60,7 +108,7 @@ int main(int argc, char **argv) {
   time_t now;
   
   
-  init();
+  init(argc,argv);
 
   clilen = sizeof(cliaddr);
   // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
