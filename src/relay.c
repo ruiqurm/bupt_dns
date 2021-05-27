@@ -18,7 +18,7 @@ int query(char questions[], int type, char buffer[MAX_DNS_SIZE]) {
   int total_size = 0;
 
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-  if (sockfd == INVALID_SOCKET){
+  if (sockfd < 0){
     log_fatal_exit_shortcut("socket error");
 		exit(0);
 	}
