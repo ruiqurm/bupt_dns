@@ -40,7 +40,7 @@ int query(char questions[], int type, char buffer[MAX_DNS_SIZE]) {
   total_size = recvfrom(sockfd, buffer, MAX_DNS_SIZE, 0,
                              (SA *)&query_server, &len);
   
-  if (total_size==SOCKET_ERROR) {
+  if (total_size<0) {
     log_error_shortcut("recvfrom error:");
     return -1;
   }
