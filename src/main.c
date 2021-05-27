@@ -99,7 +99,8 @@ int main(int argc, char **argv) {
   while (1) {
 
     len = clilen;
-    if (recvfrom(sockfd, recv_buffer, MAX_DNS_SIZE, 0, (SA *)&cliaddr, &len)<0){
+    int rec;
+    if ((rec = recvfrom(sockfd, recv_buffer, MAX_DNS_SIZE, 0, (SA *)&cliaddr, &len))<0){
       //接收失败，直接丢弃
       // #ifndef _WIN64
       //   log_error("recvfrom error:%s", strerror(errno));
