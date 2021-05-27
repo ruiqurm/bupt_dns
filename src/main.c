@@ -11,6 +11,10 @@
 #define _CRT_SECURE_NO_WARNINGS
 typedef struct sockaddr SA;
 
+#ifdef __linux
+typedef WORD unsigned short
+#endif
+
 struct cacheset cacheset;//缓存
 
 void init() {
@@ -24,15 +28,13 @@ void init() {
   // init_cache();
   #ifdef _WIN64
     WSADATA wsaData;
-    if(WSAStartup(MAKEWORD(2,2),&wsaData)!=0){
+    if(WSAStartup(MAKEWORD(2,2),&wsaData)!=0){//协商版本winsock 2.2
       log_fatal_exit_shortcut("winsock init error");
     }
     system("chcp 65001");//修改控制台格式为65001
   #endif
   #ifdef __linux
-    struct sigaction sa;
-    sa.sa_handler = SIG_IGN;
-    sigaction( SIGPIPE, &sa, 0 );
+    signal(SIGPIPE, SIG_IGN);
     //忽略管道破裂
   #endif
   // signal(SIGINT,handle_)
@@ -64,10 +66,10 @@ int main(int argc, char **argv) {
   // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   sockfd = socket(PF_INET6, SOCK_DGRAM, 0);//ipv6
   int no = 0;     
-  if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no))==INVALID_SOCKET){
+  if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no))<0){
     log_error_shortcut("set ipv6 only off:");
   }
-  if (sockfd == INVALID_SOCKET){
+  if (sockfd < 0){
     log_fatal_exit_shortcut("socket error");
 		exit(0);
 	}
@@ -97,10 +99,7 @@ int main(int argc, char **argv) {
   while (1) {
 
     len = clilen;
-    int rec;
-    // log_info()
-    rec = recvfrom(sockfd, recv_buffer, MAX_DNS_SIZE, 0, (SA *)&cliaddr, &len);
-    if (rec==SOCKET_ERROR){
+    if (recvfrom(sockfd, recv_buffer, MAX_DNS_SIZE, 0, (SA *)&cliaddr, &len)<0){
       //接收失败，直接丢弃
       // #ifndef _WIN64
       //   log_error("recvfrom error:%s", strerror(errno));
@@ -111,7 +110,7 @@ int main(int argc, char **argv) {
       log_info("%d",len);
       continue;
     }
-    ip = cliaddr.sin6_addr.u.Word; //!不需要翻过来
+    ip = (uint16_t*)&cliaddr.sin6_addr;//跨平台
     // ip = cliaddr.sin_addr.s_addr; //!不需要翻过来
     // log_info("Recvfrom %d:%d:%d:%d:port:%d ", *(char *)&ip,
     //          *(((char *)&ip) + 1), *(((char *)&ip) + 2), *(((char *)&ip) + 3),
