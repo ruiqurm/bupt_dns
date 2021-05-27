@@ -452,6 +452,7 @@ bool add_A_record(struct record*record,void*data){
   if(((struct record_data*)data)->ttl<now)return false;
   int sizeofstruct = sizeof(struct record_data);
   if(record->record_data_length>0){
+    //目前不可能执行这一段
     #ifdef LOG_INCLUDED
     log_debug("replace new A record;label= %s",((struct record_data*)record->data)->label);
     #endif 

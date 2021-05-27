@@ -5,9 +5,11 @@
 现在的预计工作：
 * select
 * 返回错误报文
+* ENDS
+* 异常处理
 * 解析authority
 * 命令行
-* 异常处理
+
 * cache cname
 ## 目录结构
 ```

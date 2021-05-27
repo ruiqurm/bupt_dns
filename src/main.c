@@ -9,6 +9,15 @@
 #include <string.h>
 #include <signal.h>
 #define _CRT_SECURE_NO_WARNINGS
+
+#define ACCEPT_IPV6_REQUEST
+
+// #ifdef ACCEPT_IPV6_REQUEST
+// typedef struct sockaddr_in6 _sockaddr_in;
+// #else
+// typedef struct sockadd_in _sockaddr_in;
+// #endif
+
 typedef struct sockaddr SA;
 
 #ifdef __linux
@@ -43,7 +52,10 @@ void init() {
 int main(int argc, char **argv) {
   int sockfd;
   // struct sockaddr_in servaddr,inaddr, cliaddr;
-  struct  sockaddr_in6 servaddr,cliaddr;
+
+  //_sockaddr_in在不启用ipv6的情况下是sockaddr_in;
+  //否则是struct sockaddr_in6
+  struct sockaddr_in6 servaddr,cliaddr;
 
   socklen_t len, clilen;
   char recv_buffer[MAX_DNS_SIZE];
@@ -59,6 +71,9 @@ int main(int argc, char **argv) {
   int _size; //临时变量
   time_t now;
   
+  fd_set rest;//描述符
+  FD_ZERO(&rest);
+  // fileno
   
   init();
 
