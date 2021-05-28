@@ -59,7 +59,7 @@ int saveip(struct IP *ip, const char *src, int version) {
   switch (version) {
   case 4:
     memcpy((void *)ip, src, 4);
-    memset((void *)ip + 4, 0, 8);
+    memset((void *)(ip + 4), 0, 8);
     ip->type = 4;
     return 4;
   case 6:
