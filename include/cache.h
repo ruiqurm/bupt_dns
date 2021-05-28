@@ -51,16 +51,17 @@ struct record {
   // void* data;
   void* data;
   int next, last;
-  int record_data_length;
+  int size;
   // char label[MAX_NAME_LENGTH];
   bool valid;
 };
 
 typedef void (*realse_data)(struct record*data);
-typedef bool (*add_data)(struct record*record,void*data);
+typedef int (*add_data)(struct record*record,void*data);
 typedef int (*add_multi_data)(struct record*record,void*data[],int size);
 typedef bool (*check_data)(struct record*data);
 typedef void* (*get_data_label)(struct record*data);
+
 typedef struct link_list {
   // struct record records[LRU_BUFFER_LENGTH + 1];
   // unsigned int stack[LRU_BUFFER_LENGTH]; //剩余位置栈
@@ -92,6 +93,7 @@ struct cacheset{
   struct cacheCompound A;
   struct cacheCompound AAAA;
 };//cache集
+
 /*************************
  *                       *
  *        函数接口        *

@@ -5,6 +5,7 @@
 #include <string.h>
 #include "hash.h"
 #include "log.h"
+// #define LOG_INCLUDED
 /*
  * 常量
  */
@@ -65,7 +66,7 @@ static inline int get_record_addr(cache*Cache,struct record *record);
  * 
  */
 void realse_A_record(struct record*data);
-bool add_A_record(struct record*record,void*data);
+int add_A_record(struct record*record,void*data);
 void* get_cache_A_record_label(struct record*data);
 bool check_A_record(struct record*record);
 int add_A_multi_record(struct record*record,void*_data[],int size);
@@ -194,7 +195,8 @@ static inline struct record* push_front(cache*Cache,const char *label) {
     log_debug("pop back done\n");
     #endif
   }
-  while (Cache->used_size + record_size > Cache->max_size) {
+
+  while (Cache->used_size + 1024 > Cache->max_size) {//预分配1kB内存，可能会超出范围
     pop_back(Cache);
     #ifdef LOG_INCLUDED
     log_debug("pop back done\n");
@@ -231,9 +233,9 @@ static inline struct record* push_front(cache*Cache,const char *label) {
     operate_record_addr = operate_record_addr;
     // strcpy_s(operate_record->label,sizeof(operate_record->label),label);
     operate_record->valid = 1;
-    operate_record->record_data_length = 0;
+    operate_record->size = 0;
     Cache->length++;
-    Cache->used_size += record_size;
+    // Cache->used_size += record_size;
   }
   // memcpy(&operate_record->data.ip, ip, sizeof(struct IP));
   // operate_record->data.next=NULL;
@@ -280,10 +282,11 @@ void pop_back(cache* Cache) {
       // }
       reset_hash_node(&Cache->label_hash,Cache->get_label(&Cache->records[Cache->last]));
       // puts(Cache->get_label(&Cache->records[Cache->last]));
+      Cache->used_size -= Cache->records[Cache->last].size;//减去动态分配内存
       Cache->realse(&Cache->records[Cache->last]);
 
       //重新链接大链表
-      Cache->used_size -= record_size;
+      // Cache->used_size -= record_size;
       Cache->records[next_to_last].next = -1;
 
       Cache->last = next_to_last;
@@ -320,8 +323,11 @@ static inline void remove_record(cache* Cache,struct record *record) {
   
 
   reset_hash_node(&Cache->label_hash,Cache->get_label(record));
+  Cache->used_size -= Cache->records[Cache->last].size;//减去动态分配内存,这句一定要在前面,否则后面就被置为0了
+  Cache->realse(&Cache->records[Cache->last]);
+
   record->valid = 0;
-  Cache->used_size -= record_size;
+  // Cache->used_size -= record_size;
   Cache->length--;
   cache_stack_push(Cache,addr);
 }
@@ -366,7 +372,7 @@ int set_cache_A_record(cache*Cache,const char *label, void*data) {
     #ifdef LOG_INCLUDED
     log_debug("set cache ;label= %s",((struct record_data*)data)->label);
     #endif 
-    if(record->record_data_length>0){
+    if(record->size>0){
       #ifdef LOG_INCLUDED
       log_debug("length>0");
       #endif
@@ -388,7 +394,7 @@ int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size
     #ifdef LOG_INCLUDED
     log_debug("set cache ;label= %s",label);
     #endif 
-    if(record->record_data_length>0){
+    if(record->size>0){
       #ifdef LOG_INCLUDED
       log_debug("length>0");
       #endif
@@ -412,15 +418,15 @@ int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size
   }
 }
 void realse_A_record(struct record*data){
-    int count = data->record_data_length;
+    // int count = data->size;
     // printf("%d\n",count);
     struct record_data *pd = data->data,*tmp;
     #ifdef LOG_INCLUDED
-    log_debug("realse a record;label= %s,length = %d,ip = %d",
-    ((struct record_data*)data->data)->label,count,((struct record_data*)data->data)->ip.addr.v4);
+    log_debug("realse a record;label= %s,size = %d",
+    ((struct record_data*)data->data)->label,((struct record*)data)->size);
     #endif 
     int has_release_label = false;
-    while(pd&&count){
+    while(pd){
       tmp=pd;
       pd=pd->next;
       if(!has_release_label){
@@ -428,13 +434,13 @@ void realse_A_record(struct record*data){
         has_release_label=true;
       }
       free(tmp);
-      count--;
+      // count--;
     }
     if(pd!=NULL){
       fprintf(stderr,"record_data link error!\n");
       exit(EXIT_FAILURE);
     }
-    data->record_data_length=0;
+    data->size=0;
     // data->data=NULL;
     #ifdef LOG_INCLUDED
     log_debug("realse done");
@@ -446,12 +452,14 @@ void realse_A_record(struct record*data){
  * @param record 
  * @param data 
  */
-bool add_A_record(struct record*record,void*data){
+int add_A_record(struct record*record,void*data){
   time_t now = time(NULL);
   struct record_data*tmp;
-  if(((struct record_data*)data)->ttl<now)return false;
+  int len = 0;
+  if(((struct record_data*)data)->ttl<now)return 0;
   int sizeofstruct = sizeof(struct record_data);
-  if(record->record_data_length>0){
+  if(record->size>0){
+    //目前不可能执行这一段
     #ifdef LOG_INCLUDED
     log_debug("replace new A record;label= %s",((struct record_data*)record->data)->label);
     #endif 
@@ -459,17 +467,21 @@ bool add_A_record(struct record*record,void*data){
     memcpy_s(record->data,sizeofstruct,data,sizeofstruct);//覆盖原数据
     ((struct record_data*)record->data)->next=tmp;
   }else{
-    record->record_data_length = 1;
+    #ifdef LOG_INCLUDED
+    log_debug("record has no data before");
+    #endif 
     record->data = malloc(sizeofstruct);
     memcpy_s(record->data,sizeofstruct,data,sizeofstruct);
-    ((struct record_data*)record->data)->label = malloc(MAX_NAME_LENGTH);
-    strcpy_s(((struct record_data*)record->data)->label,MAX_NAME_LENGTH,((struct record_data*)data)->label);//复制name
+    len = strlen(((struct record_data*)data)->label) + 1;//注意加1
+    ((struct record_data*)record->data)->label = malloc(len);
+    strcpy_s(((struct record_data*)record->data)->label,len,((struct record_data*)data)->label);//复制name
+    record->size = sizeofstruct + len;
     #ifdef LOG_INCLUDED
     log_debug("add new A record;label= %s,ip=%d",((struct record_data*)record->data)->label,((struct record_data*)record->data)->ip.addr.v4);
     #endif 
     ((struct record_data*)record->data)->next=NULL;
   }
-  return true;
+  return record->size;
 }
 
 /**
@@ -481,7 +493,7 @@ bool add_A_record(struct record*record,void*data){
  */
 int add_A_multi_record(struct record*record,void*_data[],int size){
   //将会覆盖原来数据
-  int sizeofstruct = sizeof(struct record_data),i;
+  int sizeofstruct = sizeof(struct record_data),i,len;
   time_t now = time(NULL);
   struct record_data** data = (struct record_data**)_data;
   struct record_data*  dest = NULL;
@@ -500,21 +512,22 @@ int add_A_multi_record(struct record*record,void*_data[],int size){
     }else{
       dest = record->data = malloc(sizeofstruct);
       memcpy_s(dest,sizeofstruct,data[i],sizeofstruct);
-     dest->label = malloc(MAX_NAME_LENGTH);
+      len = strlen(data[i]->label) + 1;//注意加1
+     dest->label = malloc(len);
     //  printf("%lld\n",(*dest)->label);
-      strcpy_s(dest->label, MAX_NAME_LENGTH,data[i]->label);//复制name
+      strcpy_s(dest->label,len,data[i]->label);//复制name
     }
     #ifdef LOG_INCLUDED
     log_debug("add new A record;pre=%s  label= %s",data[0]->label,dest->label);
     #endif 
 
-    record->record_data_length++;
+    record->size += sizeofstruct;
   }
-  if(record->record_data_length&&dest)dest->next=NULL;
+  if(record->size&&dest)dest->next=NULL;
    #ifdef LOG_INCLUDED
     log_debug("first label:%s",((struct record_data*)(record->data))->label);
     #endif 
-  return record->record_data_length;
+  return record->size;
 }
 bool check_A_record(struct record*record){
   return ((struct record_data*)record->data)->ttl < time(NULL) && 

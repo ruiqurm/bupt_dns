@@ -19,28 +19,28 @@ const unsigned int DNS_HEADER_SIZE = sizeof(struct dns_header);
 const int QUERY_SIZE = sizeof(struct question);
 
 const char* RRtype_to_str(int rr_type){
-  static const char buffer[120]="A\0\0\0\0"\
-                                "NS\0\0\0"\
-                                "CNAME"\
+  static const char buffer[120]="RRTYPE_A\0\0\0\0"\
+                                "RRTYPE_NS\0\0\0"\
+                                "RRTYPE_CNAME"\
                                 "\0SOA\0"\
-                                "PTR\0\0"\
-                                "MX\0\0\0"\
-                                "AAAA\0"\
+                                "RRTYPE_PTR\0\0"\
+                                "RRTYPE_MX\0\0\0"\
+                                "RRTYPE_AAAA\0"\
                                 "UNKNOW";
   switch(rr_type){
-    case A:
+    case RRTYPE_A:
       return &buffer[0];
-    case NS:
+    case RRTYPE_NS:
       return &buffer[5];
-    case CNAME:
+    case RRTYPE_CNAME:
       return &buffer[10];
-    case SOA:
+    case RRTYPE_SOA:
       return &buffer[16];
-    case PTR:
+    case RRTYPE_PTR:
       return &buffer[20];
-    case MX:
+    case RRTYPE_MX:
       return &buffer[25];
-    case AAAA:
+    case RRTYPE_AAAA:
       return &buffer[30];
     default:
       return &buffer[35];
@@ -234,15 +234,15 @@ int read_dns_answer(struct answer *dest, char *src, char *message_start) {
   uint16_t length = ntohs(answer_struct->length);
   src += sizeof(struct answer_struct);
   switch (dest->type) {
-  case A:
-  case AAAA:
+  case RRTYPE_A:
+  case RRTYPE_AAAA:
     saveip(&(dest->address), src, length);
     break;
-  case CNAME:
+  case RRTYPE_CNAME:
     // dest->cname = (char*) malloc(80);
     fetch_label(dest->cname, src, message_start, NULL);
     break;
-  case MX:
+  case RRTYPE_MX:
     return -1;
     // next = 0;
     break;
@@ -273,6 +273,30 @@ int read_dns_answers(struct answer *answers, char *message) {
   }
   return ans;
 }
+void set_header_id(char *buffer,unsigned short id){
+   ((struct dns_header *)buffer)->id = htons(id);
+}
+
+void set_header_flag(char*buffer,unsigned short flags){
+  ((struct dns_header *)buffer)->flags = htons(flags);
+}
+
+void set_header_rcode_failure(char*buffer){
+  ((struct dns_header *)buffer)->rcode = RCODE_FAILURE;
+}
+
+void set_header_rcode_not_implemented(char*buffer){
+  ((struct dns_header *)buffer)->rcode = RCODE_NOT_IMPLEMENTED;
+}
+
+void set_header_rcode_refused(char*buffer){
+  ((struct dns_header *)buffer)->rcode = RCODE_REFUSED;
+}
+
+void set_header_rcode_format_error(char*buffer){
+  ((struct dns_header *)buffer)->rcode = RCDOE_FORMAT_ERROR;
+}
+
 
 int write_dns_header(char *buffer, int id, uint16_t flags, int qdcount,
                      int ancount, int nscount, int adcount) {
@@ -331,21 +355,21 @@ int write_dns_answer(char *buffer, const char *name, int type, int class,
   buffer += tmp;
 
   switch (type) {
-  case A:
+  case RRTYPE_A:
     answer->length = htons(4);
     size = 4;
     memcpy(buffer, rdata, size);
     break;
-  case AAAA:
+  case RRTYPE_AAAA:
     answer->length = htons(16);
     size = 16;
     memcpy(buffer, rdata, size);
     break;
-  case CNAME:
+  case RRTYPE_CNAME:
     size = str_to_label(buffer, (char *)rdata, MAX_DNS_SIZE);
     answer->length = htons(size);
     break;
-  // case MX:
+  // case RRTYPE_MX:
   // break;
   default:
     return -1;
@@ -467,14 +491,14 @@ inline static const char *debugstr(int type, int value) {
     }
   case DEBUG_PRINT_TYPE_type:
     switch (value) {
-    case AAAA:
-      return "AAAA";
-    case A:
-      return "A";
-    case CNAME:
-      return "CNAME";
-    case MX:
-      return "MX";
+    case RRTYPE_AAAA:
+      return "RRTYPE_AAAA";
+    case RRTYPE_A:
+      return "RRTYPE_A";
+    case RRTYPE_CNAME:
+      return "RRTYPE_CNAME";
+    case RRTYPE_MX:
+      return "RRTYPE_MX";
     default:
       return "Unknow";
     }
@@ -578,17 +602,17 @@ int sprint_dns_answers(char *dest, char *message) {
                     debugstr(DEBUG_PRINT_TYPE_type, answers[i].type),
                     debugstr(DEBUG_PRINT_TYPE_class, answers[i].class_));
     switch (answers[i].type) {
-    case A:
+    case RRTYPE_A:
       dest += sprintf(dest, "ip");
       for (int j = 0; j < 4; j++)
         dest += sprintf(dest, ":%d", answers[i].address.addr.v4byte[j]);
       break;
-    case AAAA:
+    case RRTYPE_AAAA:
       for (int j = 0; j < 8; j++)
         dest += sprintf(dest, ":%04x", answers[i].address.addr.v6byte[j]);
       ;
-    case CNAME:
-      dest += sprintf(dest, "CNAME:%s", answers[i].cname);
+    case RRTYPE_CNAME:
+      dest += sprintf(dest, "RRTYPE_CNAME:%s", answers[i].cname);
       // free(&answers[i].cname);
     default:
       break;
