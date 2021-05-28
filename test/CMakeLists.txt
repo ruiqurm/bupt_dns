@@ -12,6 +12,7 @@ ADD_TEST(NAME test_cache COMMAND test_cache)
 ADD_EXECUTABLE(test_cache test_cache.c)
 TARGET_LINK_LIBRARIES(test_cache cachelib)
 
+
 ADD_TEST(NAME test_hash COMMAND test_hash)
 ADD_EXECUTABLE(test_hash test_hash.c)
 TARGET_LINK_LIBRARIES(test_hash hash)
