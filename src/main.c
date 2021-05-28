@@ -246,6 +246,7 @@ int main(int argc, char **argv) {
             log_error_shortcut("sendto error:");
         }
         IDAdapter_pop(header.id);
+        log_info("处理完成");
       }
     }
 
@@ -280,8 +281,8 @@ int main(int argc, char **argv) {
       // sprint_dns(recv_buffer);
       if (header.flags != htons(FLAG_QUERY)) {
         //不是询问，也丢弃
-        struct dns_header* buffer_=(struct dns_header*) recv_buffer;
-        buffer_->rcode=5;
+        set_header_flag(recv_buffer,FLAG_RESPONSE_NORMAL);
+        set_header_rcode_refused(recv_buffer);
         if (sendto(server_sockfd, recv_buffer, rec , 0,(SA *)&cliaddr,
                     sizeof(cliaddr)) < 0) {
           log_error_shortcut("sendto error:");
@@ -307,6 +308,18 @@ int main(int argc, char **argv) {
         log_info("取到缓存");
         now = time(NULL);
         int count=0;
+        if(data && ((data->ip.type==IPV4 && data->ip.addr.v4 == 0) || (data->ip.type==IPV6 && data->ip.addr.v6 == 0))){
+          //拦截
+          log_info("拦截请求");
+          set_header_flag(recv_buffer,FLAG_RESPONSE_NORMAL);
+          set_header_rcode_name_error(recv_buffer);
+          if (sendto(server_sockfd, recv_buffer, rec , 0,(SA *)&cliaddr,
+                    sizeof(cliaddr)) < 0) {
+              log_error_shortcut("sendto error:");
+          } else {
+            log_info("发送成功");
+          }
+        }
         while(data){
           ans[count].ttl = data->ttl - now;
           memcpy(&ans[count].address, &data->ip, sizeof(struct IP));

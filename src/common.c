@@ -276,7 +276,12 @@ int read_dns_answers(struct answer *answers, char *message) {
 void set_header_id(char *buffer,unsigned short id){
    ((struct dns_header *)buffer)->id = htons(id);
 }
-
+void set_header_response(char*buffer){
+  ((struct dns_header *)buffer)->qr = 1;//切换为应答
+}
+void set_header_query(char*buffer){
+  ((struct dns_header *)buffer)->qr = 0;//切换为询问
+}
 void set_header_flag(char*buffer,unsigned short flags){
   ((struct dns_header *)buffer)->flags = htons(flags);
 }
@@ -288,7 +293,9 @@ void set_header_rcode_failure(char*buffer){
 void set_header_rcode_not_implemented(char*buffer){
   ((struct dns_header *)buffer)->rcode = RCODE_NOT_IMPLEMENTED;
 }
-
+void set_header_rcode_name_error(char*buffer){
+  ((struct dns_header *)buffer)->rcode = RCODE_NAME_ERROR;
+}
 void set_header_rcode_refused(char*buffer){
   ((struct dns_header *)buffer)->rcode = RCODE_REFUSED;
 }

@@ -23,8 +23,7 @@
 // DNS query标记
 #define FLAG_QUERY 0x0100
 
-// DNS 回复头标记 （后面改）
-#define FLAG_RESPONSE_NORMAL 0x8150
+#define FLAG_RESPONSE_NORMAL 0x8000
 
 //判断是否是两字节
 #define IN_16b_RANGE(x) ((int)x >= 0 && (int)x <= 0xffff)
@@ -398,8 +397,12 @@ void set_header_rcode_failure(char*buffer);
 void set_header_rcode_not_implemented(char*buffer);
 
 void set_header_rcode_refused(char*buffer);
-
+void set_header_rcode_name_error(char*buffer);
 void set_header_rcode_format_error(char*buffer);
+
+void set_header_response(char*buffer);
+
+void set_header_query(char*buffer);
 
 /**
  * @brief 写一条DNS查询

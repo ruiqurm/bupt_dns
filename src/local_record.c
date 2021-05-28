@@ -39,7 +39,7 @@ bool load_local_A_record(cache *Cache,const char* filename){
         if (fscanf(file, "%s%s",ip,name)==2){
             inet_pton(AF_INET,ip,&tmp_data.ip.addr);
             log_debug("read url:%s  ip:%s\n",name,ip);
-
+            tmp_data.ip.type = IPV4;
             tmp_data.ttl=DNS_CACHE_PERMANENT;
             tmp_data.label=name;
             set_cache_A_record(Cache,name,&tmp_data);
