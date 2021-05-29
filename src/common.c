@@ -19,13 +19,13 @@ const unsigned int DNS_HEADER_SIZE = sizeof(struct dns_header);
 const int QUERY_SIZE = sizeof(struct question);
 
 const char* RRtype_to_str(int rr_type){
-  static const char buffer[120]="RRTYPE_A\0\0\0\0"\
-                                "RRTYPE_NS\0\0\0"\
-                                "RRTYPE_CNAME"\
+  static const char buffer[120]="A\0\0\0\0"\
+                                "NS\0\0\0"\
+                                "CNAME"\
                                 "\0SOA\0"\
-                                "RRTYPE_PTR\0\0"\
-                                "RRTYPE_MX\0\0\0"\
-                                "RRTYPE_AAAA\0"\
+                                "PTR\0\0"\
+                                "MX\0\0\0"\
+                                "AAAA\0"\
                                 "UNKNOW";
   switch(rr_type){
     case RRTYPE_A:

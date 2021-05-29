@@ -149,7 +149,7 @@ int main(int argc, char **argv) {
   
   struct dns_header header;//暂存DNS header
   struct question question;//暂存DNS question
-  struct answer ans[10];//暂存DNS answer
+  struct answer ans[20];//暂存DNS answer
   struct record_data tmp_ans_data[10];
   struct record_data *data;//获取缓存的指针
   struct static_record_data *static_data;//获取本地缓存的指针
@@ -195,22 +195,22 @@ int main(int argc, char **argv) {
         log_error("invalid id");
         goto handle_request;//跳过本次处理
       }
-      if(iptoaddr->type == RRTYPE_A || iptoaddr->type == RRTYPE_AAAA){
+      log_info("报文id=%d,旧id=%d",header.id,iptoaddr->old_id);
+      if(iptoaddr->type == RRTYPE_A){
         //可以缓存的类型
         ans_num = read_dns_answers(ans, recv_buffer);
-        // log_info("ans_num: %d\n",ans_num);
+        // log_debug("ans_num: %d\n",ans_num);
+        
         if (ans_num > 0) {
           int count =0;
-          struct record_data* send_data[10];
+          struct record_data* send_data[20];
           now = time(NULL);
           for(int i=0;i<ans_num;i++){
-            if(ans[i].type==RRTYPE_A){
               memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP));
               tmp_ans_data[count].label = ans[i].name;
               tmp_ans_data[count].ttl = now + ans[i].ttl;
               send_data[count] = &tmp_ans_data[count];
               count++;
-            }
           }
           log_debug("count:%d",count);
           if(count>0){
@@ -226,7 +226,7 @@ int main(int argc, char **argv) {
       if ( (sendto(server_sockfd, recv_buffer, total_size, 0, (SA *)&(iptoaddr->addr),sizeof(iptoaddr->addr) )  ) < 0){
           log_error_shortcut("sendto error:");
       }
-      log_ip("finish: ",&cliaddr);
+      log_ip("处理结束: ",&cliaddr);
       IDAdapter_pop(header.id);
       
     }
@@ -281,7 +281,7 @@ int main(int argc, char **argv) {
       if(static_data){
         //取到本地记录
         ans[count].ttl = 3600;//1小时
-        memcpy(&ans[count].address, &data->ip, sizeof(struct IP));
+        memcpy(&ans[count].address, &static_data->ip, sizeof(struct IP));
         ans[count].type = question.qtype;
         ans[count].class_ = question.qclass;
         ans[count].has_cname = false;
@@ -318,6 +318,7 @@ int main(int argc, char **argv) {
         log_info("未取到缓存");
         short new_id=0;
         if ( (new_id = IDAdapter_push(header.id,&cliaddr,question.qtype)) !=-1){
+            log_debug("old_id=%d,new_id=%d",header.id ,new_id);
             len = sizeof(struct sockaddr_in);
             set_header_id(recv_buffer,new_id);
             if (sendto(query_sockfd, (char *)recv_buffer, rec, 0, (SA *)&query_server,
@@ -430,8 +431,8 @@ void init(int argc,char **argv) {
         exit(0);
     }
   }
-
-  log_set_level(debug_lev!=0?atoi(argv[debug_lev]):2);
+  log_set_level(LOG_DEBUG);
+  // log_set_level(debug_lev!=0?atoi(argv[debug_lev]):2);
   load_local_record(&cacheset,file==0?"dnsrelay.txt":argv[file]);
   init_A_record_cache_default(&cacheset.A.temp);
   init_A_record_cache_default(&cacheset.AAAA.temp);
