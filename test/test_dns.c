@@ -12,7 +12,6 @@ static inline void log_ip(const char* str,struct IP* addr){
     unsigned char* ipv4=addr; //!不需要翻过来
     log_info("%s %d:%d:%d:%d",str,
               ipv4[0],ipv4[1],ipv4[2],ipv4[3]);
-    
 }
 int init(){
     WSADATA wsaData;
@@ -39,13 +38,14 @@ int main(){
     char name[1024];
 	char result[10240];
     while(fscanf(in, "%s%s",ip,name)==2){
+        
         struct question dns_question;
         strcpy( dns_question.label,name);
         dns_question.qclass= HTTP_CLASS;
         dns_question.qtype = RRTYPE_A;
         int total_size=write_dns_query(buffer,name,RRTYPE_A);
          if ( (sendto(ss, buffer, total_size, 0, (SA *)&(query_server),sizeof(query_server) )  ) < 0){
-             printf("%d\n",total_size);
+            printf("%d\n",total_size);
           log_error_shortcut("sendto error:");
       }
       int len=sizeof(query_server) ;
@@ -53,12 +53,6 @@ int main(){
           log_error_shortcut("recvfrom error:");
       }
       int ans_num = read_dns_answers(ans, buffer);
-      if(ans_num!=0)
-      log_ip("",&ans[0].address);
-      else
-      {
-          printf("00000");
-      }
       
       /*
         if(strcmp(ip,"0.0.0.0")==0){
