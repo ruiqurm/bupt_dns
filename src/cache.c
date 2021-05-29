@@ -637,7 +637,10 @@ static inline bool compare_record_with_label(void* record,void*label){
   }
   return !strcmp(((struct record_data*)((struct record*)record)->data)->label, label);
 }
-
+static inline bool compare_static_record_data_with_label(void* record_data,void*label){
+  // struct record_data* record = ()_recor
+  return !strcmp( ((struct static_record_data*)record_data)->label, label);
+}
 /*
  * 测试函数
  */
@@ -684,4 +687,51 @@ void test_normal(cache* Cache) {
   #ifdef LOG_INCLUDED
   log_debug("check good\n");
   #endif
+}
+
+
+void init_staticCache(struct staticCache* Cache,int size){
+  if(Cache->is_init==false){
+    init_hashtable(&Cache->table,size,0.75,_hash_label,compare_static_record_data_with_label);
+    Cache->data = (struct static_record_data*)malloc((size+2)*sizeof(struct static_record_data));
+    Cache->top = 0;
+    Cache->size = size;
+    Cache->is_init = true;
+  }
+}
+void free_staticCache(struct staticCache* Cache){
+  if(Cache->is_init==true){
+    free_hashtable(&Cache->table);//释放哈希表
+    for(int i=0;i<Cache->top;i++){//释放字符串
+      free(Cache->data[i].label);
+    }
+    free(Cache->data);//释放数组
+    Cache->is_init = false;
+  }
+}
+struct static_record_data* get_static_cache(struct staticCache* Cache,const char* label){
+  if(Cache->is_init==true){
+    bool is_find=false;
+    hashnode * node = get_hashnode(&Cache->table,(void*)label,&is_find);
+    if(!is_find || node==NULL)return NULL;
+    return node->record;
+  }
+  return NULL;
+}
+bool set_static_cache(struct staticCache* Cache,const char* label,const struct IP*ip){
+  if(Cache->is_init==true){
+    int len = strlen(label) + 1;//记得加1
+    int top = Cache->top;
+    if(top==Cache->size){
+      log_error("static cache overflow. top == %d",Cache->top);
+      return false;
+    }
+    memcpy_s(&Cache->data[top].ip,sizeof(struct IP),ip,sizeof(struct IP));
+    Cache->data[top].label = (char*)malloc(len);
+    memcpy_s(Cache->data[top].label,len,label,len);
+    set_hashnode(&Cache->table,(void*)label,&Cache->data[top],NULL);
+    Cache->top+=1;
+    return true;
+  }
+  return false;
 }

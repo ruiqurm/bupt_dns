@@ -6,4 +6,5 @@
 
 #include<stdbool.h>
 #include"cache.h"
-bool load_local_A_record(cache *Cache,const char* filename);
+
+bool load_local_record(struct cacheset *cacheset,const char* filename);

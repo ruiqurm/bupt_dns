@@ -145,6 +145,7 @@ int main(int argc, char **argv) {
   struct answer ans[10];
   struct record_data tmp_ans_data[10];
   struct record_data *data;
+  struct static_record_data *static_data;
   // unsigned ip;
   WORD* ip;
   int enable_cache;
@@ -293,33 +294,41 @@ int main(int argc, char **argv) {
       read_dns_questions(&question, recv_buffer);
       log_info("%s %s",RRtype_to_str(question.qtype),question.label);
       data = NULL;
-      if (question.qtype==RRTYPE_A){
-        //A记录缓存
-         (data = get_cache_A_record(&cacheset.A.local,question.label))||
-          (data = get_cache_A_record(&cacheset.A.temp,question.label)) ;
-          //短路求值
-      }
-      if (question.qtype==RRTYPE_AAAA){
-        data = get_cache_A_record(&cacheset.AAAA.temp,question.label);
-        //此处AAAA和A的函数是相同的
-      }
-      if(data){
-        //取到缓存   
-        log_info("取到缓存");
-        now = time(NULL);
-        int count=0;
-        if(data && ((data->ip.type==IPV4 && data->ip.addr.v4 == 0) || (data->ip.type==IPV6 && data->ip.addr.v6 == 0))){
-          //拦截
-          log_info("拦截请求");
-          set_header_flag(recv_buffer,FLAG_RESPONSE_NORMAL);
-          set_header_rcode_name_error(recv_buffer);
-          if (sendto(server_sockfd, recv_buffer, rec , 0,(SA *)&cliaddr,
-                    sizeof(cliaddr)) < 0) {
-              log_error_shortcut("sendto error:");
-          } else {
-            log_info("发送成功");
-          }
+      static_data = NULL;
+      puts(question.label);
+      if ( (static_data=get_static_cache(&cacheset.blacklist,question.label)) ){//不能少括号
+        log_info("拦截请求");
+        set_header_flag(recv_buffer,FLAG_RESPONSE_NORMAL);
+        set_header_rcode_name_error(recv_buffer);
+        if (sendto(server_sockfd, recv_buffer, rec , 0,(SA *)&cliaddr,
+                  sizeof(cliaddr)) < 0) {
+            log_error_shortcut("sendto error:");
+        } else {
+          log_info("发送成功");
         }
+        continue;
+      }
+      log_info("size =%d %d",cacheset.blacklist.size,get_static_cache(&cacheset.blacklist,question.label)==NULL);
+      if(question.qtype==RRTYPE_A){
+        static_data = get_static_cache(&cacheset.A.local,question.label);
+        if(!static_data)data = get_cache_A_record(&cacheset.A.temp,question.label);
+      }else if (question.qtype==RRTYPE_AAAA){
+        static_data = get_static_cache(&cacheset.AAAA.local,question.label);
+        if(!static_data)data = get_cache_A_record(&cacheset.AAAA.temp,question.label);
+      }
+      int count=0;
+      if(static_data){
+        //取到本地记录
+        ans[count].ttl = 3600;//1小时
+        memcpy(&ans[count].address, &data->ip, sizeof(struct IP));
+        ans[count].type = question.qtype;
+        ans[count].class_ = question.qclass;
+        ans[count].has_cname = false;
+        strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
+        count = 1;
+      }else if(data){
+        //取到
+        now = time(NULL);
         while(data){
           ans[count].ttl = data->ttl - now;
           memcpy(&ans[count].address, &data->ip, sizeof(struct IP));
@@ -331,6 +340,10 @@ int main(int argc, char **argv) {
           count++;
           data=data->next;
         }
+      }
+      if(count){
+        //取到缓存   
+        log_info("取到缓存");
         _size = write_dns_response_by_query(recv_buffer, ans, count);
         // sprint_dns(query_buffer);
         if (sendto(server_sockfd, recv_buffer, _size, 0, (SA *)&cliaddr,
@@ -366,7 +379,7 @@ void init() {
   
   log_set_level(LOG_INFO);
 
-  load_local_A_record(&cacheset.A.local,"dnsrelay.txt");
+  load_local_record(&cacheset,"dnsrelay.txt");
   init_A_record_cache_default(&cacheset.A.temp);
   init_A_record_cache_default(&cacheset.AAAA.temp);
 

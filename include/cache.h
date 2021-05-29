@@ -47,6 +47,10 @@ struct record_data {
   time_t ttl; //过期时间
   struct record_data* next;//链表
 };
+struct static_record_data{
+  char* label;
+  struct IP ip;
+};
 struct record {
   // void* data;
   void* data;
@@ -84,15 +88,25 @@ typedef struct link_list {
   get_data_label get_label;
 } cache;
 
+struct staticCache{
+    struct static_record_data* data;
+    bool is_init;    //是否初始化
+    int size;
+    hashtable table;
+    int top;
+};
+
 struct cacheCompound{
   cache temp;//临时
-  cache local;//本地
+  struct staticCache local;//本地
 };
 
 struct cacheset{
+  struct staticCache blacklist;
   struct cacheCompound A;
   struct cacheCompound AAAA;
 };//cache集
+
 
 /*************************
  *                       *
@@ -155,3 +169,10 @@ int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size
  * 测试用函数
  */
 void test_normal(cache* Cache); //检查cache是否正常
+
+
+
+bool set_static_cache(struct staticCache* Cache,const char* label,const struct IP*ip);
+void init_staticCache(struct staticCache* Cache,int size);
+void free_staticCache(struct staticCache* Cache);
+struct static_record_data* get_static_cache(struct staticCache* Cache,const char* label);

@@ -2,29 +2,25 @@
 #include<stdlib.h>
 #include<stdio.h>
 #include"log.h"
-cache local;
-bool _check(const char *q,const char* a){
+// struct staticCache local;
+struct cacheset cacheset;
+
+bool check(struct staticCache* cache ,const char *q,const char* a){
     static char buffer[256];
-    struct record_data *pdata = get_cache_A_record(&local,q);
+    struct static_record_data *pdata = get_static_cache(cache,q);
     if(pdata){
         inet_ntop(AF_INET,&pdata->ip, buffer, sizeof(buffer));
         if(pdata!=NULL && !strcmp(buffer,a)){
-            return false;
+            return true;
         }
-    }else{
-        return false;
     }
-    return true;
+    log_error("error:%s %s %s",q,a,buffer);
+    exit(EXIT_FAILURE);
 }
-void check(const char*q,const char*a){
-    if(_check(q,a)){
-        printf("error:%s %s\n",q,a);
-        exit(EXIT_FAILURE);
-    }
-}
-
+#define check_A(q,a)  check(&cacheset.A.local,q,a)
+#define check_black(q,a)  check(&cacheset.blacklist,q,a)
 int main(int argc,char**argv){
-    log_set_level(LOG_INFO);
+    log_set_level(LOG_DEBUG);
     char file[128];
     if(argc==2){
         strcpy_s(file,128,argv[1]);
@@ -32,14 +28,18 @@ int main(int argc,char**argv){
         strcpy_s(file,128,"dnsrelay.txt");
     }
     
-    if(!load_local_A_record(&local,file)){
+    if(!load_local_record(&cacheset,file)){
         printf("can't find dnsrelay.txt\n");
         exit(EXIT_FAILURE);
     }
-    check("khm.l.google.com","210.242.125.98");
-    check("ci1.googleusercontent.com","74.125.207.132");
-    check("lh0.googleusercontent.com","74.125.207.132");
-    check("productideas.appspot.com","64.233.185.141");
+    check_A("khm.l.google.com","210.242.125.98");
+    check_A("ci1.googleusercontent.com","74.125.207.132");
+    check_A("lh0.googleusercontent.com","74.125.207.132");
+    check_A("productideas.appspot.com","64.233.185.141");
+    check_black("zelnet.ru","0.0.0.0");
+    check_black("www.yule21.com","0.0.0.0");
+    check_black("www.yysky.net","0.0.0.0");
+    check_black("www.yyqy.com","0.0.0.0");
     printf("test successfully\n");
     return 0;
 }
