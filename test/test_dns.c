@@ -33,7 +33,7 @@ int init(){
 
 int main(){
     init();
-     FILE *in= fopen("D:/qq1/bupt_dns/src/dnsrelay.txt", "r");
+     FILE *in= fopen("dnsrelay.txt", "r");
     char ip[1024];
     char name[1024];
 	char result[10240];
@@ -45,7 +45,7 @@ int main(){
         dns_question.qtype = RRTYPE_A;
         int total_size=write_dns_query(buffer,name,RRTYPE_A);
          if ( (sendto(ss, buffer, total_size, 0, (SA *)&(query_server),sizeof(query_server) )  ) < 0){
-            printf("%d\n",total_size);
+            // printf("%d\n",total_size);
           log_error_shortcut("sendto error:");
       }
       int len=sizeof(query_server) ;
@@ -53,7 +53,9 @@ int main(){
           log_error_shortcut("recvfrom error:");
       }
       int ans_num = read_dns_answers(ans, buffer);
-      
+      // printf("%d",ans_num);
+      log_ip("",&ans[0]);
+      // if(ans_num!=0)printf("%d",ans[0].address.addr.v4);
       /*
         if(strcmp(ip,"0.0.0.0")==0){
             cout<<result;

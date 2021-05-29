@@ -227,12 +227,13 @@ int read_dns_answer(struct answer *dest, char *src, char *message_start) {
   int cnt = fetch_label((char *)&(dest->name), src, message_start, &src);
   if (cnt == -1)
     return -1;
-  struct answer_struct *answer_struct = (struct answer_struct *)src;
+  struct answer_struct *answer_struct = (struct answer_struct *)(src+1);
   dest->ttl = ntohl(answer_struct->ttl);
   dest->class_ = ntohs(answer_struct->class_);
   dest->type = ntohs(answer_struct->type);
   uint16_t length = ntohs(answer_struct->length);
   src += sizeof(struct answer_struct);
+  // printf("%d %d\n",dest->type,dest->class_);
   switch (dest->type) {
   case RRTYPE_A:
   case RRTYPE_AAAA:
@@ -269,8 +270,10 @@ int read_dns_answers(struct answer *answers, char *message) {
     data += 5;
   }
   for (int i = 0; i < ans && data != 0; i++) {
+    
     data += read_dns_answer((struct answer *)&answers[i], data, message);
   }
+  
   return ans;
 }
 void set_header_id(char *buffer,unsigned short id){
