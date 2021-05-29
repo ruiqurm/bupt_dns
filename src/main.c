@@ -281,7 +281,7 @@ int main(int argc, char **argv) {
       if(static_data){
         //取到本地记录
         ans[count].ttl = 3600;//1小时
-        memcpy(&ans[count].address, &data->ip, sizeof(struct IP));
+        memcpy(&ans[count].address, &static_data->ip, sizeof(struct IP));
         ans[count].type = question.qtype;
         ans[count].class_ = question.qclass;
         ans[count].has_cname = false;
@@ -461,9 +461,6 @@ void init(int argc,char **argv) {
   log_info("server accept IPV6 and IPV4 connection");
   #else
   if( (server_sockfd = socket(AF_INET, SOCK_DGRAM, 0))<0){
-      log_fatal_exit_shortcut("socket open error");
-  }
-    if( (server_sockfd = socket(AF_INET, SOCK_DGRAM, 0))<0){
       log_fatal_exit_shortcut("socket open error");
   }
   log_info("server accept IPV4 connection only");

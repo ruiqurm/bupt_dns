@@ -5,6 +5,7 @@
 #define DEBUG 1
 #include"cache.h"
 #include"log.h"
+
 struct myrecord {
   struct IP ip;
   time_t ttl; //过期时间
