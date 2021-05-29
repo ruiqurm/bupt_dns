@@ -116,7 +116,7 @@ void relay(int id, struct question *question, char buffer[MAX_DNS_SIZE],
 
 
 
-void init();
+void init(int,char **);
 
 /*************************
  *                       *
@@ -375,15 +375,54 @@ int main(int argc, char **argv) {
 }
 
 
-void init() {
-  
-  log_set_level(LOG_INFO);
+void init(int argc,char **argv) {
+  char x[5][4]={"-d","-s","-f","-n","-dd"};
+  int debug_lev=0,catch_num=0,dns_server=0,file=0;
+  for(int i=1;i<argc;i++){
+    if(!strcmp(argv[i],"-d")){
+      if(i==argc-1){
+        exit(0);
+      }
+      else{
+        debug_lev=++i;
+      }
+    }
+    else if(!strcmp(argv[i],"-f")){
+      if(i==argc-1){
+        exit(0);
+      }
+      else{
+        file=++i;
+      }
+    }
+    else if(!strcmp(argv[i],"-s")){
+      if(i==argc-1){
+        exit(0);
+      }
+      else{
+        
+        dns_server=++i;
+      }
+    }
+    else if(!strcmp(argv[i],"-n")){
+      if(i==argc-1){
+          exit(0);
+      }
+      else{
+        catch_num=atoi(argv[++i]);
+      }
+    }
+    else{
+        exit(0);
+    }
+  }
 
-  load_local_record(&cacheset,"dnsrelay.txt");
+  log_set_level(debug_lev!=0?atoi(argv[debug_lev]):2);
+  load_local_record(&cacheset,file==0?"dnsrelay.txt":argv[file]);
   init_A_record_cache_default(&cacheset.A.temp);
   init_A_record_cache_default(&cacheset.AAAA.temp);
 
-  init_query_server("10.3.9.4");
+  init_query_server(dns_server==0?"10.3.9.4":argv[dns_server]);
   // init_cache();
   #ifdef _WIN64
     WSADATA wsaData;
@@ -396,7 +435,7 @@ void init() {
     signal(SIGPIPE, SIG_IGN);
     //忽略管道破裂
   #endif
-
+  // signal(SIGINT,handle_)
   #ifdef ACCEPT_IPV6_REQUEST
   int no = 0;  
   if( (server_sockfd = socket(PF_INET6, SOCK_DGRAM, 0))<0){
@@ -432,6 +471,7 @@ void init() {
   #endif
   log_info("init all done");
 }
+
 
 
 
