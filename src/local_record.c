@@ -88,6 +88,7 @@ bool load_local_record(struct cacheset *cacheset,const char* filename){
             if(line==0)break;
         }
     }
+    log_info("read local record done");
     return true;
 }
 

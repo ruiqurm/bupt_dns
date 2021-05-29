@@ -17,7 +17,8 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 //允许接收来自IPV6的请求（向下兼容）
-#define ACCEPT_IPV6_REQUEST
+//取消宏定义可以仅处理Ipv4请求
+#define ACCEPT_IPV6_REQUES
 
 #ifdef ACCEPT_IPV6_REQUEST
 typedef struct sockaddr_in6 _sockaddr_in;
@@ -31,22 +32,28 @@ typedef struct sockaddr SA;
 typedef WORD unsigned short
 #endif
 
+//IP转换器的大小
 #define IDAadpter_SIZE 1024
-
 #if IDAadpter_SIZE>32767
 #error IDAadpter_SIZE should smaller than 32767
 #endif
 
 /*************************
  *                       *
- *        结构体         *
+ *       ID转换器         *
  *                       *
  *************************/
+
+
+/**
+ * @brief 返回给用户的ID转换数据
+ */
 typedef struct{
   _sockaddr_in addr;
  unsigned short old_id;
  unsigned char type;
 }IDtoAddr;
+
 
 struct{
   struct {
@@ -58,26 +65,34 @@ struct{
   unsigned short next;
 }IDAdapter;
 
-inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type){
-  short next = IDAdapter.next;
-  if(!IDAdapter.data[next].valid){
-      IDAdapter.data[next].valid=true;
-      memcpy(&IDAdapter.data[next].info,source,sizeof(_sockaddr_in));
-      IDAdapter.data[next].info.old_id = id;
-      IDAdapter.data[next].info.type = type;
-      IDAdapter.next = (IDAdapter.next + 1) % IDAadpter_SIZE;
-      return next;
-  }else{
-    return -1;
-  }
-}
-inline static void IDAdapter_pop(short pos){
-  IDAdapter.data[pos % IDAadpter_SIZE].valid=false;
-}
-inline static IDtoAddr* IDAdapter_get(short pos){
-  return IDAdapter.data[pos % IDAadpter_SIZE].valid?&IDAdapter.data[pos % IDAadpter_SIZE].info:NULL;
-}
 
+
+/**
+ * @brief ID转换器压入一个ID
+ * 
+ * @details 如果使用的空间满了，会返回-1
+ * @param id 旧的报文编号
+ * @param source 源端地址
+ * @param type 报文类型
+ * 
+ * @return short ID转换器编号
+ */
+inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type);
+
+/**
+ * @brief ID转换器弹出一个ID
+ * 
+ * @param pos ID转换器分配的ID
+ */
+inline static void IDAdapter_pop(short pos);
+
+/**
+ * @brief ID转换器获取ID对应的数据
+ * 
+ * @param pos ID转换器分配的ID
+ * @return IDtoAddr* 
+ */
+inline static IDtoAddr* IDAdapter_get(short pos);
 
 
 /*************************
@@ -86,112 +101,74 @@ inline static IDtoAddr* IDAdapter_get(short pos){
  *                       *
  *************************/
 
-/**
- * @brief 初始化,设置要询问的服务器
- * @param query_server_addr 询问服务器地址
- */
-void init_query_server(const char *query_server_addr);
-
-/**
- * @brief 快速询问一个服务器
- *
- * @param questions question
- * @param type type
- * @param buffer 返回的数据（报文）
- * @return 写入字节数
- */
-int query(char questions[], int type, char buffer[MAX_DNS_SIZE]);
-
-/**
- * @brief 中继
- *
- * @param id 请求报文id
- * @param question question
- * @param buffer 缓冲区，不需要放数据，但是要大于DNS_MAX_SIZE；节省开销
- * @param sockfd sock端口
- * @param target 目标ip地址
- */
-void relay(int id, struct question *question, char buffer[MAX_DNS_SIZE],
-           int sockfd, _sockaddr_in *target);
-
-
-
+///初始化,处理命令行参数，初始化cache，初始化WSA和socket套接字,设置超时，绑定端口
 void init(int,char **);
+void on_SIGINT(int sig);
+void clean_up();
+
+///打印ip
+static inline void log_ip(const char* str,_sockaddr_in* addr){
+    unsigned char* ipv4;
+    #ifdef ACCEPT_IPV6_REQUEST
+    WORD* ipv6;
+    // if (*((unsigned long long*)&addr->sin6_addr) == 0){//如果前64位是0，说明是ipv4地址
+    //   ipv4 = (unsigned char*)&addr->sin6_addr.u.Word[4];
+    //   log_info("%s %d:%d:%d:%d:port:%d ",str,ipv4[0],ipv4[1],ipv4[2],ipv4[3],
+    //       ntohs(addr->sin6_port));
+    // }else{
+      ipv6 = (uint16_t*)&addr->sin6_addr;//跨平台
+      log_info("%s %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x port:%d ",str,
+        ipv6[0],ipv6[1],ipv6[2],ipv6[3],ipv6[4],ipv6[5],ipv6[6],ipv6[7],ntohs(addr->sin6_port));
+    // }
+    #else
+    ipv4 = (unsigned char*)&addr->sin_addr; //!不需要翻过来
+    log_info("%s %d:%d:%d:%d:port:%d ",str,
+              ipv4[0],ipv4[1],ipv4[2],ipv4[3],
+              ntohs(addr->sin_port));
+    #endif
+}
 
 /*************************
  *                       *
  *        全局变量        *
  *                       *
  *************************/
-struct cacheset cacheset;//缓存
+struct cacheset cacheset;//缓存集
 struct sockaddr_in query_server;
 int server_sockfd,server_sockfd;//提供服务的sockfd
 int query_sockfd;//向服务器询问用的文件描述符,只支持IPV4
-int sockfd;
 char recv_buffer[1024];
 
 int main(int argc, char **argv) {
-  // struct sockaddr_in servaddr,inaddr, cliaddr;
 
   //_sockaddr_in在不启用ipv6的情况下是sockaddr_in;
   //否则是struct sockaddr_in6
-  _sockaddr_in servaddr,cliaddr;
+  _sockaddr_in cliaddr;
 
   socklen_t len, clilen;
   
-  // char query_buffer[MAX_DNS_SIZE];
-  struct dns_header header;
-  struct question question;
-  struct answer ans[10];
+  struct dns_header header;//暂存DNS header
+  struct question question;//暂存DNS question
+  struct answer ans[10];//暂存DNS answer
   struct record_data tmp_ans_data[10];
-  struct record_data *data;
-  struct static_record_data *static_data;
+  struct record_data *data;//获取缓存的指针
+  struct static_record_data *static_data;//获取本地缓存的指针
   // unsigned ip;
-  WORD* ip;
-  int enable_cache;
+  
   int _size; //临时变量
   time_t now;
 
   fd_set rset;//读集合
-  // fd_set wset;//写集合
   FD_ZERO(&rset);
-  // FD_ZERO(&wset);
 
-  // fileno
-  
+  //初始化,处理命令行参数，初始化cache，初始化WSA和socket套接字,设置超时，绑定端口
   init(argc,argv);
 
   clilen = sizeof(cliaddr);
-  // sockfd = socket(AF_INET, SOCK_DGRAM, 0);
      
 
-  memset(&servaddr, 0, sizeof(servaddr));
-  #ifdef ACCEPT_IPV6_REQUEST
-  servaddr.sin6_family = AF_INET6;
-  servaddr.sin6_addr = in6addr_any;
-  servaddr.sin6_port = htons(DNS_SERVER_PORT);
-  #else
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  servaddr.sin_port = htons(DNS_SERVER_PORT);
-  #endif
-  
-
-  // int nMode = 1; // 1: NON-BLOCKING
-  // if (ioctlsocket (sockfd, FIONBIO, &nMode) == SOCKET_ERROR)
-  // {
-  //     // closesocket(SendingSocket);
-  //     log_fatal("Winsock:%s",WSAGetLastError());
-  //     WSACleanup();
-  //     exit(EXIT_FAILURE);
-  // }
-  if (bind(server_sockfd, (SA *)&servaddr, sizeof(servaddr)) < 0) {
-  //!可能无权限
-    log_fatal_exit_shortcut("bind error");
-  }
-  log_info("Listen on localhost:53");
   int max_fd = query_sockfd + 1;
-  struct timeval timeout;
+  // struct timeval timeout;
   while (1) {
     FD_SET(server_sockfd,&rset);
     FD_SET(query_sockfd,&rset);
@@ -202,6 +179,7 @@ int main(int argc, char **argv) {
       log_info("跳过");
       continue;
     }
+    handle_relay://处理中继
     if (FD_ISSET(query_sockfd,&rset)){
       //优先处理未完成的请求
       log_info("处理DNS服务器发来请求");
@@ -209,74 +187,59 @@ int main(int argc, char **argv) {
       int ans_num = 0;
       IDtoAddr * iptoaddr;
       if (( (total_size = recvfrom(query_sockfd , recv_buffer, MAX_DNS_SIZE, 0,(SA *)&query_server, &len))<0)){
-            log_error_shortcut("recvfrom error:");
-      }else{
-        read_dns_header(&header, recv_buffer);
-        if( (iptoaddr = IDAdapter_get(header.id)) == NULL){
-          log_error("invalid id");
-        }
-        if(iptoaddr->type == RRTYPE_A || iptoaddr->type == RRTYPE_AAAA){
-          //可以缓存的类型
-          ans_num = read_dns_answers(ans, recv_buffer);
-          // log_info("ans_num: %d\n",ans_num);
-          if (ans_num > 0) {
-            int count =0;
-            struct record_data* send_data[10];
-            now = time(NULL);
-            for(int i=0;i<ans_num;i++){
-              if(ans[i].type==RRTYPE_A){
-                memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP));
-                tmp_ans_data[count].label = ans[i].name;
-                tmp_ans_data[count].ttl = now + ans[i].ttl;
-                send_data[count] = &tmp_ans_data[count];
-                count++;
-              }
+          log_error_shortcut("recvfrom error:");
+          goto handle_request;//跳过本次处理
+      }
+      read_dns_header(&header, recv_buffer);
+      if( (iptoaddr = IDAdapter_get(header.id)) == NULL){
+        log_error("invalid id");
+        goto handle_request;//跳过本次处理
+      }
+      if(iptoaddr->type == RRTYPE_A || iptoaddr->type == RRTYPE_AAAA){
+        //可以缓存的类型
+        ans_num = read_dns_answers(ans, recv_buffer);
+        // log_info("ans_num: %d\n",ans_num);
+        if (ans_num > 0) {
+          int count =0;
+          struct record_data* send_data[10];
+          now = time(NULL);
+          for(int i=0;i<ans_num;i++){
+            if(ans[i].type==RRTYPE_A){
+              memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP));
+              tmp_ans_data[count].label = ans[i].name;
+              tmp_ans_data[count].ttl = now + ans[i].ttl;
+              send_data[count] = &tmp_ans_data[count];
+              count++;
             }
-            log_info("count:%d",count);
-            if(count>0){
-              if(iptoaddr->type == RRTYPE_A){
-                set_cache_A_multi_record(&cacheset.A.temp,tmp_ans_data[0].label,(void**)send_data,count);
-              }else if(iptoaddr->type == RRTYPE_AAAA){
-                set_cache_A_multi_record(&cacheset.AAAA.temp,tmp_ans_data[0].label,(void**)send_data,count);
-              }
+          }
+          log_debug("count:%d",count);
+          if(count>0){
+            if(iptoaddr->type == RRTYPE_A){
+              set_cache_A_multi_record(&cacheset.A.temp,tmp_ans_data[0].label,(void**)send_data,count);
+            }else if(iptoaddr->type == RRTYPE_AAAA){
+              set_cache_A_multi_record(&cacheset.AAAA.temp,tmp_ans_data[0].label,(void**)send_data,count);
             }
           }
         }
-        set_header_id(recv_buffer,iptoaddr->old_id);
-        if ( (sendto(server_sockfd, recv_buffer, total_size, 0, (SA *)&(iptoaddr->addr),sizeof(iptoaddr->addr) )  ) < 0){
-            log_error_shortcut("sendto error:");
-        }
-        IDAdapter_pop(header.id);
-        log_info("处理完成");
       }
+      set_header_id(recv_buffer,iptoaddr->old_id);
+      if ( (sendto(server_sockfd, recv_buffer, total_size, 0, (SA *)&(iptoaddr->addr),sizeof(iptoaddr->addr) )  ) < 0){
+          log_error_shortcut("sendto error:");
+      }
+      log_ip("finish: ",&cliaddr);
+      IDAdapter_pop(header.id);
+      
     }
 
-
+    handle_request:
     if (FD_ISSET(server_sockfd,&rset)){
       //如果有一个新的请求
       int rec;
       len = clilen;
       if ((rec = recvfrom(server_sockfd, recv_buffer, MAX_DNS_SIZE, 0, (SA *)&cliaddr, &len))<0){
-      //接收失败，直接丢弃
-      // #ifndef _WIN64
-      //   log_error("recvfrom error:%s", strerror(errno));
-      //   errno = 0;
-      // #else
-      //   log_error("bind error:code[%d]", GetLastError());
-      // #endif
-      // log_info("%d",len);
       continue;
     }
-      #ifdef ACCEPT_IPV6_REQUEST
-      ip = (uint16_t*)&cliaddr.sin6_addr;//跨平台
-      log_info("Recvfrom %04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x port:%d ",
-        ip[0],ip[1],ip[2],ip[3],ip[4],ip[5],ip[6],ip[7],ntohs(cliaddr.sin6_port));
-      #else
-      ip = cliaddr.sin_addr.s_addr; //!不需要翻过来
-      log_info("Recvfrom %d:%d:%d:%d:port:%d ", *(char *)&ip,
-                *(((char *)&ip) + 1), *(((char *)&ip) + 2), *(((char *)&ip) + 3),
-                ntohs(cliaddr.sin_port));
-      #endif
+      log_ip("recvfrom:",&cliaddr);
 
       read_dns_header(&header, recv_buffer);
       // sprint_dns(recv_buffer);
@@ -295,7 +258,6 @@ int main(int argc, char **argv) {
       log_info("%s %s",RRtype_to_str(question.qtype),question.label);
       data = NULL;
       static_data = NULL;
-      puts(question.label);
       if ( (static_data=get_static_cache(&cacheset.blacklist,question.label)) ){//不能少括号
         log_info("拦截请求");
         set_header_flag(recv_buffer,FLAG_RESPONSE_NORMAL);
@@ -308,7 +270,6 @@ int main(int argc, char **argv) {
         }
         continue;
       }
-      log_info("size =%d %d",cacheset.blacklist.size,get_static_cache(&cacheset.blacklist,question.label)==NULL);
       if(question.qtype==RRTYPE_A){
         static_data = get_static_cache(&cacheset.A.local,question.label);
         if(!static_data)data = get_cache_A_record(&cacheset.A.temp,question.label);
@@ -358,9 +319,7 @@ int main(int argc, char **argv) {
         short new_id=0;
         if ( (new_id = IDAdapter_push(header.id,&cliaddr,question.qtype)) !=-1){
             len = sizeof(struct sockaddr_in);
-            printf("%d",new_id);
             set_header_id(recv_buffer,new_id);
-            // sprint_dns(recv_buffer);
             if (sendto(query_sockfd, (char *)recv_buffer, rec, 0, (SA *)&query_server,
                       ADDR_LEN)<0) {
               log_error_shortcut("sendto error");
@@ -368,12 +327,67 @@ int main(int argc, char **argv) {
         }
       }
     }
+    // err_handle:
 
-    
   }
   return 0;
 }
 
+
+
+
+
+
+
+
+void init_query_server(const char *query_server_addr) {
+  memset(&query_server, 0, ADDR_LEN);
+
+  query_server.sin_family = AF_INET;
+  query_server.sin_port = htons(DNS_SERVER_PORT);
+  inet_pton(AF_INET,query_server_addr,&query_server.sin_addr.s_addr);
+  
+  // inet_pton(AF_INET,query_server_addr,&query_server.sin_addr.s_addr);
+}
+
+inline static void bind_addr(){
+    _sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(servaddr));
+    #ifdef ACCEPT_IPV6_REQUEST
+    servaddr.sin6_family = AF_INET6;
+    servaddr.sin6_addr = in6addr_any;
+    servaddr.sin6_port = htons(DNS_SERVER_PORT);
+    #else
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    servaddr.sin_port = htons(DNS_SERVER_PORT);
+    #endif
+    if (bind(server_sockfd, (SA *)&servaddr, sizeof(servaddr)) < 0) {
+    //!可能无权限
+      log_fatal_exit_shortcut("bind error");
+    }
+    log_info("Listen on localhost:53");
+}
+
+inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type){
+  short next = IDAdapter.next;
+  if(!IDAdapter.data[next].valid){
+      IDAdapter.data[next].valid=true;
+      memcpy(&IDAdapter.data[next].info,source,sizeof(_sockaddr_in));
+      IDAdapter.data[next].info.old_id = id;
+      IDAdapter.data[next].info.type = type;
+      IDAdapter.next = (IDAdapter.next + 1) % IDAadpter_SIZE;
+      return next;
+  }else{
+    return -1;
+  }
+}
+inline static void IDAdapter_pop(short pos){
+  IDAdapter.data[pos % IDAadpter_SIZE].valid=false;
+}
+inline static IDtoAddr* IDAdapter_get(short pos){
+  return IDAdapter.data[pos % IDAadpter_SIZE].valid?&IDAdapter.data[pos % IDAadpter_SIZE].info:NULL;
+}
 
 void init(int argc,char **argv) {
   char x[5][4]={"-d","-s","-f","-n","-dd"};
@@ -421,9 +435,9 @@ void init(int argc,char **argv) {
   load_local_record(&cacheset,file==0?"dnsrelay.txt":argv[file]);
   init_A_record_cache_default(&cacheset.A.temp);
   init_A_record_cache_default(&cacheset.AAAA.temp);
+  log_info("init cache done");
 
   init_query_server(dns_server==0?"10.3.9.4":argv[dns_server]);
-  // init_cache();
   #ifdef _WIN64
     WSADATA wsaData;
     if(WSAStartup(MAKEWORD(2,2),&wsaData)!=0){//协商版本winsock 2.2
@@ -444,6 +458,7 @@ void init(int argc,char **argv) {
   if (setsockopt(server_sockfd, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&no, sizeof(no))<0){
     log_fatal_shortcut("failed set ipv6 only off:");
   }
+  log_info("server accept IPV6 and IPV4 connection");
   #else
   if( (server_sockfd = socket(AF_INET, SOCK_DGRAM, 0))<0){
       log_fatal_exit_shortcut("socket open error");
@@ -451,6 +466,7 @@ void init(int argc,char **argv) {
     if( (server_sockfd = socket(AF_INET, SOCK_DGRAM, 0))<0){
       log_fatal_exit_shortcut("socket open error");
   }
+  log_info("server accept IPV4 connection only");
   #endif
 
   if( (query_sockfd = socket(AF_INET, SOCK_DGRAM, 0))<0){
@@ -463,47 +479,41 @@ void init(int argc,char **argv) {
   if (setsockopt(query_sockfd, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
       log_error("set timeout error",strerror(errno));
   }
+  log_info("setting timeout = %d ms",tv.tv_sec * 1000 + tv.tv_usec);
   #elif defined(_WIN64)
   DWORD timeout = 1 * 1000;//设置超时时间
   if(setsockopt(query_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeout, sizeof timeout)<0){
       log_error_shortcut("set timeout error");
   }
+  log_info("setting timeout = %d ms",timeout);
   #endif
+  if(signal(SIGINT, on_SIGINT)<0){
+    log_fatal_exit_shortcut("can't set SIGINT");
+  }
   log_info("init all done");
+  bind_addr();
 }
-
-
-
-
-
-void init_query_server(const char *query_server_addr) {
-  memset(&query_server, 0, ADDR_LEN);
-
-  query_server.sin_family = AF_INET;
-  query_server.sin_port = htons(DNS_SERVER_PORT);
-  inet_pton(AF_INET,query_server_addr,&query_server.sin_addr.s_addr);
+void on_SIGINT(int sig){
+  log_info("catch SIGINT");
+  clean_up();
+  log_info("bye.");
+  log_set_quiet(true);
+   fflush(stdout);//有点问题
+  exit(0);
+}
+void clean_up(){
+  #ifdef _WIN64
+    shutdown(query_sockfd,2);
+    shutdown(server_sockfd,2);
+    closesocket(query_sockfd);
+    closesocket(server_sockfd);
+    WSACleanup();
+  #elif _linux
+  #endif
+  free_staticCache(&cacheset.A.local);
+  free_staticCache(&cacheset.AAAA.local);
+  free_staticCache(&cacheset.blacklist);  
+  free_cache(&cacheset.A.temp);
+  free_cache(&cacheset.AAAA.temp);
   
-  // inet_pton(AF_INET,query_server_addr,&query_server.sin_addr.s_addr);
 }
-
-
-
-// void relay(int id, struct question *question, char buffer[MAX_DNS_SIZE],
-//            int sockfd, _sockaddr_in *target) {
-//   //中继
-//   int size;
-//   struct dns_header *header;
-//   log_debug("中继:向DNS服务器请求");
-//   size = query(question->label, question->qtype, buffer);
-//   if(size==-1){
-//     log_error_shortcut("未从服务器获取到数据.");
-//     return;
-//   }
-//   header = (struct dns_header *)buffer;
-//   header->id = htons(id);
-//   if (sendto(sockfd, buffer, size, 0, (SA *)target, sizeof(*target)) < 0) {
-//     log_error_shortcut("sendto error:");
-//   } else {
-//     log_info("成功回复");
-//   }
-// }

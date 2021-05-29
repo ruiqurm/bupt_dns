@@ -107,9 +107,6 @@ void init_cache(cache*Cache,int record_length,int max_size,double filling_factor
   Cache->check = check;
   Cache->get_label =get_label;
   Cache->is_init = true;
-  #ifdef LOG_INCLUDED
-  log_debug("init done\n");
-  #endif 
 }
 /**
  * @brief 默认初始化
