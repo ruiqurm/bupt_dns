@@ -497,9 +497,6 @@ void init(int argc,char **argv) {
   if( (server_sockfd = socket(AF_INET, SOCK_DGRAM, 0))<0){
       log_fatal_exit_shortcut("socket open error");
   }
-    if( (server_sockfd = socket(AF_INET, SOCK_DGRAM, 0))<0){
-      log_fatal_exit_shortcut("socket open error");
-  }
   log_info("server accept IPV4 connection only");
   #endif
 
