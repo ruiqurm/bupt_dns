@@ -3,12 +3,8 @@
 
 
 现在的预计工作：
-* select
 * 返回错误报文
-* ENDS
-* 异常处理
-* 解析authority
-* 命令行
+* 多线程
 
 * cache cname
 ## 目录结构
@@ -46,22 +42,6 @@ make
 ### 切换为clang编译器
 windows下要切换clang可以用`cmake-gui ..`。configure编译器路径，然后generate.
 
-### 生成vs solution
-
-
-```cmd
-mkdir build
-cd build
-cmake ..
-```
-生成的解决方案在`/build/`路径下
 ## 执行
 执行build/src/dns.exe即可
 
-
-## 命令行解析
-1. 加载 dnsrelay.txt
-2. 设置 cache 大小
-3. help
-4. debug
-5. 设置服务器
