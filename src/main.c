@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
+#include <time.h>
+#include <conio.h>
 
 
 /*************************
@@ -15,6 +17,9 @@
  *                       *
  *************************/
 #define _CRT_SECURE_NO_WARNINGS
+
+#define DNS_TTL 1000  //DNS超时时限
+#define SELECT_TTL 10000  //select函数超时时限，单位为微秒
 
 //允许接收来自IPV6的请求（向下兼容）
 //取消宏定义可以仅处理Ipv4请求
@@ -59,7 +64,8 @@ struct{
   struct {
     IDtoAddr info;
     bool valid;
-
+    clock_t start; //存开始时间
+    char message[1024]; //存报文
   }data[IDAadpter_SIZE];
   bool is_init;
   unsigned short next;
@@ -77,7 +83,7 @@ struct{
  * 
  * @return short ID转换器编号
  */
-inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type);
+inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type,clock_t time,char *buffer);
 
 /**
  * @brief ID转换器弹出一个ID
@@ -138,6 +144,7 @@ struct sockaddr_in query_server;
 int server_sockfd,server_sockfd;//提供服务的sockfd
 int query_sockfd;//向服务器询问用的文件描述符,只支持IPV4
 char recv_buffer[1024];
+struct timeval *timeout; //select函数中timeout参数
 
 int main(int argc, char **argv) {
 
@@ -161,6 +168,8 @@ int main(int argc, char **argv) {
   fd_set rset;//读集合
   FD_ZERO(&rset);
 
+  timeout->tv_usec= SELECT_TTL; //设置timeout的值
+
   //初始化,处理命令行参数，初始化cache，初始化WSA和socket套接字,设置超时，绑定端口
   init(argc,argv);
 
@@ -174,11 +183,32 @@ int main(int argc, char **argv) {
     FD_SET(query_sockfd,&rset);
     
     int work_fd;  
-    if( (work_fd = select(0,&rset,NULL,NULL,NULL))<0){
+    if( (work_fd = select(0,&rset,NULL,NULL,timeout))<0){
       //!!!!加处理
       log_info("跳过");
       continue;
     }
+
+    //查找超时的项并处理
+    if(work_fd==0){
+      for(int i=0;i<IDAadpter_SIZE;i++){
+        if(IDAdapter.data[i].valid&&(clock()-IDAdapter.data[i].start>=DNS_TTL)){
+          IDtoAddr * idtoaddr = &IDAdapter.data[i].info;
+          log_info("超时回复");
+          set_header_flag(IDAdapter.data[i].message,FLAG_RESPONSE_NORMAL);
+          set_header_rcode_refused(IDAdapter.data[i].message);
+          if (sendto(server_sockfd, IDAdapter.data[i].message, strlen(IDAdapter.data[i].message), 0,(SA *)&idtoaddr->addr,
+                    sizeof(idtoaddr->addr)) < 0) {
+              log_error_shortcut("sendto error:");
+          } else {
+            log_info("发送成功");
+          }
+          IDAdapter.data[i].valid=false;
+        }
+      }
+      continue;
+    }
+
     handle_relay://处理中继
     if (FD_ISSET(query_sockfd,&rset)){
       //优先处理未完成的请求
@@ -317,7 +347,8 @@ int main(int argc, char **argv) {
         //未取到缓存，需要查询
         log_info("未取到缓存");
         short new_id=0;
-        if ( (new_id = IDAdapter_push(header.id,&cliaddr,question.qtype)) !=-1){
+        *(recv_buffer+rec)='\0';
+        if ( (new_id = IDAdapter_push(header.id,&cliaddr,question.qtype,clock(),recv_buffer)) !=-1){
             log_debug("old_id=%d,new_id=%d",header.id ,new_id);
             len = sizeof(struct sockaddr_in);
             set_header_id(recv_buffer,new_id);
@@ -370,13 +401,15 @@ inline static void bind_addr(){
     log_info("Listen on localhost:53");
 }
 
-inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type){
+inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type,clock_t time,char *buffer){
   short next = IDAdapter.next;
   if(!IDAdapter.data[next].valid){
       IDAdapter.data[next].valid=true;
       memcpy(&IDAdapter.data[next].info,source,sizeof(_sockaddr_in));
       IDAdapter.data[next].info.old_id = id;
       IDAdapter.data[next].info.type = type;
+      IDAdapter.data[next].start = time;
+      strcpy_s(IDAdapter.data[next].message,1024,buffer);
       IDAdapter.next = (IDAdapter.next + 1) % IDAadpter_SIZE;
       return next;
   }else{
