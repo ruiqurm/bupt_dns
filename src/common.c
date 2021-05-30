@@ -232,7 +232,7 @@ int read_dns_answer(struct answer *dest, char *src, char *message_start) {
   dest->class_ = ntohs(answer_struct->class_);
   dest->type = ntohs(answer_struct->type);
   uint16_t length = ntohs(answer_struct->length);
-  src += sizeof(struct answer_struct);
+  src += sizeof(struct answer_struct) + 1;
   // printf("%d %d\n",dest->type,dest->class_);
   switch (dest->type) {
   case RRTYPE_A:
@@ -502,13 +502,13 @@ inline static const char *debugstr(int type, int value) {
   case DEBUG_PRINT_TYPE_type:
     switch (value) {
     case RRTYPE_AAAA:
-      return "RRTYPE_AAAA";
+      return "AAAA";
     case RRTYPE_A:
-      return "RRTYPE_A";
+      return "A";
     case RRTYPE_CNAME:
-      return "RRTYPE_CNAME";
+      return "CNAME";
     case RRTYPE_MX:
-      return "RRTYPE_MX";
+      return "MX";
     default:
       return "Unknow";
     }
@@ -603,14 +603,15 @@ int sprint_dns_questions(char *dest, char *message_start) {
   return dest - dest_;
 }
 int sprint_dns_answers(char *dest, char *message) {
-  struct answer answers[8];
+  struct answer answers[20];
   char *dest_ = dest;
   int n = read_dns_answers(answers, message);
   dest += sprintf(dest, "-------ANSWERS----------\n");
   for (int i = 0; i < n; i++) {
-    dest += sprintf(dest, "%s type:%s class:%s ", answers[i].name,
+    dest += sprintf(dest, "%s type:%s class:%s ttl:%d", answers[i].name,
                     debugstr(DEBUG_PRINT_TYPE_type, answers[i].type),
-                    debugstr(DEBUG_PRINT_TYPE_class, answers[i].class_));
+                    debugstr(DEBUG_PRINT_TYPE_class, answers[i].class_),
+                    answers[i].ttl);
     switch (answers[i].type) {
     case RRTYPE_A:
       dest += sprintf(dest, "ip");

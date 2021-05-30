@@ -9,9 +9,8 @@ char buffer[1024];
   struct answer ans[50];
 struct sockaddr_in query_server;
 static inline void log_ip(const char* str,struct IP* addr){
-    unsigned char* ipv4=addr; //!不需要翻过来
     log_info("%s %d:%d:%d:%d",str,
-              ipv4[0],ipv4[1],ipv4[2],ipv4[3]);
+              addr->addr.v4byte[0],addr->addr.v4byte[1],addr->addr.v4byte[2],addr->addr.v4byte[3]);
 }
 int init(){
     WSADATA wsaData;
@@ -28,7 +27,6 @@ int init(){
   query_server.sin_family = AF_INET;
   query_server.sin_port = htons(DNS_SERVER_PORT);
   inet_pton(AF_INET,"127.0.0.1",&query_server.sin_addr.s_addr);
- 
 }
 
 int main(){
@@ -54,7 +52,7 @@ int main(){
       }
       int ans_num = read_dns_answers(ans, buffer);
       // printf("%d",ans_num);
-      log_ip("",&ans[0]);
+      if(ans_num!=0){sprint_dns(buffer);log_ip("",&ans[0].address);exit(0);}
       // if(ans_num!=0)printf("%d",ans[0].address.addr.v4);
       /*
         if(strcmp(ip,"0.0.0.0")==0){

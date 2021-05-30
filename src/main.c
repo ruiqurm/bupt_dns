@@ -309,13 +309,16 @@ int main(int argc, char **argv) {
       int count=0;
       if(static_data){
         //取到本地记录
-        ans[count].ttl = 3600;//1小时
-        memcpy(&ans[count].address, &static_data->ip, sizeof(struct IP));
-        ans[count].type = question.qtype;
-        ans[count].class_ = question.qclass;
-        ans[count].has_cname = false;
-        strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
-        count = 1;
+        while(static_data){
+          ans[count].ttl = 3600;//1小时
+          memcpy(&ans[count].address, &static_data->ip, sizeof(struct IP));
+          ans[count].type = question.qtype;
+          ans[count].class_ = question.qclass;
+          ans[count].has_cname = false;
+          strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
+          count += 1;
+          static_data = static_data->next;
+        }
       }else if(data){
         //取到
         now = time(NULL);
