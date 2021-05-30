@@ -25,7 +25,7 @@
 //永久
 //1<<40超过1000年
 #define DNS_CACHE_PERMANENT 1099511627776
-
+#define CACHE_INFINTE_SIZE 4294967296
 
 /**
  * @brief 哈希函数
@@ -50,6 +50,7 @@ struct record_data {
 struct static_record_data{
   char* label;
   struct IP ip;
+  struct static_record_data* next;
 };
 struct record {
   // void* data;

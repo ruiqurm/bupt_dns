@@ -535,60 +535,7 @@ bool check_A_record(struct record*record){
 void* get_cache_A_record_label(struct record*data){
   return ((struct record_data*)data->data)->label;
 }
-// int set_cache_A_multi_record_multiple(cache*Cache,struct answer ans[10],int size) {
-//   #if DEBUG==1
-//     test_normal(Cache);
-//   #endif
-//   struct record* record = push_front(Cache,label);//预留空间
-  
-//   }else{
-//     return 0;
-//   }
-// }
 
-
-
-/*
-time_t now = time(NULL);
-  if(data){
-    int sizeofip = sizeof(struct IP);
-    int i,count,flag;
-    for(i=0;i<size;i++){
-      count = record->record_data_length;
-      struct record_data* record_data=&record->data,*last;
-      last = record_data;
-      flag = 0;
-      while(record_data&&count--){//第一个的时候，后面的条件不满足，也会直接退出
-        if (!memcmp(&data[i].ip,&record_data->ip,sizeofip)){
-            //相同
-            flag = 1;
-            break;
-        }
-        last=record_data;
-        record_data=record_data->next;
-      }
-      if(1!=flag){
-        //说明无重复
-        if(record->record_data_length!=0){
-          //后面的元素，需要新复制
-          record_data = last->next = (struct record_data*)malloc(sizeof(struct record_data));
-        }
-        memcpy_s(&record->data.ip,sizeofip,&data[i].ip,sizeofip);
-        record->data.ttl = now+data[i].ttl;
-        record->data.next=NULL;
-        record->record_data_length++;
-      }
-    }
-    return 1;
-
-*/
-// void clear_cache() {
-//   //清空缓存
-//   abort();
-//   memset(&cache, 0, sizeof(struct link_list));
-//   // memset(&)
-//   //在做了。
-// }
 
 
 
@@ -601,14 +548,7 @@ inline static struct record *get(cache *Cache,const char *label) {
 
 
 
-// static inline void insert_record_after_node(hashnode *node,
-//                                             struct record *record) {
-//   //直接设置,将在该节点之后插入
-//   node = node->next = (hashnode *)malloc(sizeof(hashnode));
-//   node->next = NULL;
-//   node->record = record;
-//   // return hash_label(record->data.label);//相同接口
-// }
+
 
 static inline unsigned _hash_label(void*label) {
   // hash函数 by 阎宏飞和谢正茂
@@ -698,9 +638,16 @@ void init_staticCache(struct staticCache* Cache,int size){
 }
 void free_staticCache(struct staticCache* Cache){
   if(Cache->is_init==true){
+    struct static_record_data* data=NULL,*tmp=NULL;
     free_hashtable(&Cache->table);//释放哈希表
     for(int i=0;i<Cache->top;i++){//释放字符串
       free(Cache->data[i].label);
+      tmp = data=&Cache->data[i];
+      while(data){
+        data = data->next;
+        free(tmp);
+        tmp = data;
+      }
     }
     free(Cache->data);//释放数组
     Cache->is_init = false;
@@ -717,18 +664,34 @@ struct static_record_data* get_static_cache(struct staticCache* Cache,const char
 }
 bool set_static_cache(struct staticCache* Cache,const char* label,const struct IP*ip){
   if(Cache->is_init==true){
-    int len = strlen(label) + 1;//记得加1
-    int top = Cache->top;
-    if(top==Cache->size){
-      log_error("static cache overflow. top == %d",Cache->top);
-      return false;
+    struct static_record_data* data=NULL;
+    char* first_label = NULL;
+    if ( (data=(get_static_cache(Cache,label))) !=NULL){
+        //重复
+      first_label = data->label;
+      while(data->next){
+        data= data->next;
+      }
+      data->next = (struct static_record_data*)malloc(sizeof(struct static_record_data));
+      data =data->next;
+      memcpy_s(&data->ip,sizeof(struct IP),ip,sizeof(struct IP));
+      data->label = first_label;
+      data->next=NULL;
+    }else{
+      int len = strlen(label) + 1;//记得加1
+      int top = Cache->top;
+      if(top==Cache->size){
+        log_error("static cache overflow. top == %d",Cache->top);
+        return false;
+      }
+      memcpy_s(&Cache->data[top].ip,sizeof(struct IP),ip,sizeof(struct IP));
+      Cache->data[top].label = (char*)malloc(len);
+      memcpy_s(Cache->data[top].label,len,label,len);
+      Cache->data[top].next=NULL;
+      set_hashnode(&Cache->table,(void*)label,&Cache->data[top],NULL);
+      Cache->top+=1;
+      return true;
     }
-    memcpy_s(&Cache->data[top].ip,sizeof(struct IP),ip,sizeof(struct IP));
-    Cache->data[top].label = (char*)malloc(len);
-    memcpy_s(Cache->data[top].label,len,label,len);
-    set_hashnode(&Cache->table,(void*)label,&Cache->data[top],NULL);
-    Cache->top+=1;
-    return true;
   }
   return false;
 }
