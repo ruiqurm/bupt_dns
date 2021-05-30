@@ -91,7 +91,7 @@ void init_cache(cache*Cache,int record_length,int max_size,double filling_factor
   Cache->records[LRU_BUFFER_HEAD_POINT].last = -1;
   Cache->records[LRU_BUFFER_HEAD_POINT].next = -1;
   Cache->records[LRU_BUFFER_HEAD_POINT].valid = 1; //头结点
-
+  log_info("record_length:%d",record_length);
   for (int i = 0, j = record_length; i < record_length;
        i++, j--) {
     Cache->stack[i] = j; // 1~MAX 都是可用的 0是头结点
@@ -117,6 +117,7 @@ void init_A_record_cache_default(cache*Cache){
   realse_A_record,add_A_record,add_A_multi_record,check_A_record,get_cache_A_record_label);
 }
 void init_A_record_cache(cache*Cache,int record_length,int max_size,double filling_factor){
+  
   init_cache(Cache,record_length,max_size,filling_factor,
   realse_A_record,add_A_record,add_A_multi_record,check_A_record,get_cache_A_record_label);
 }

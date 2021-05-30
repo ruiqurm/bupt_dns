@@ -8,11 +8,12 @@ struct cacheset cacheset;
 bool check(struct staticCache* cache ,const char *q,const char* a){
     static char buffer[256];
     struct static_record_data *pdata = get_static_cache(cache,q);
-    if(pdata){
+    while(pdata){
         inet_ntop(AF_INET,&pdata->ip, buffer, sizeof(buffer));
         if(pdata!=NULL && !strcmp(buffer,a)){
             return true;
         }
+        pdata=pdata->next;
     }
     log_error("error:%s %s %s",q,a,buffer);
     exit(EXIT_FAILURE);
@@ -34,6 +35,8 @@ int main(int argc,char**argv){
     }
     check_A("khm.l.google.com","210.242.125.98");
     check_A("ci1.googleusercontent.com","74.125.207.132");
+    check_A("uploads.clients.google.com","74.125.207.117");
+    check_A("uploads.clients.google.com","74.125.207.113");
     check_A("lh0.googleusercontent.com","74.125.207.132");
     check_A("productideas.appspot.com","64.233.185.141");
     check_black("zelnet.ru","0.0.0.0");

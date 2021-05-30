@@ -425,13 +425,21 @@ inline static IDtoAddr* IDAdapter_get(short pos){
   return IDAdapter.data[pos % IDAadpter_SIZE].valid?&IDAdapter.data[pos % IDAadpter_SIZE].info:NULL;
 }
 
+void dnsExit(){
+  printf("Usage:\n");
+  printf("    .\\dns [-opt ...]             # interactive mode using default server,file and cache size \n "\
+  "    .\\dns [-opt ...] -d number   # interactive mode using debug number lever \n"\
+  "    .\\dns [-opt ...] -f file     # interactive mode using this file as dnsrelay \n"\
+  "    .\\dns [-opt ...] -s server   # interactive mode using 'server' \n"\
+  "    .\\dns [-opt ...] -c number   # interactive mode using the number size of cache");
+  exit(0);
+}
 void init(int argc,char **argv) {
-  char x[5][4]={"-d","-s","-f","-n","-dd"};
-  int debug_lev=0,catch_num=0,dns_server=0,file=0;
+  int debug_lev=0,cache_num=0,dns_server=0,file=0;
   for(int i=1;i<argc;i++){
     if(!strcmp(argv[i],"-d")){
       if(i==argc-1){
-        exit(0);
+        dnsExit();
       }
       else{
         debug_lev=++i;
@@ -439,7 +447,7 @@ void init(int argc,char **argv) {
     }
     else if(!strcmp(argv[i],"-f")){
       if(i==argc-1){
-        exit(0);
+        dnsExit();
       }
       else{
         file=++i;
@@ -447,30 +455,29 @@ void init(int argc,char **argv) {
     }
     else if(!strcmp(argv[i],"-s")){
       if(i==argc-1){
-        exit(0);
+        dnsExit();
       }
       else{
-        
         dns_server=++i;
       }
     }
-    else if(!strcmp(argv[i],"-n")){
+    else if(!strcmp(argv[i],"-c")){
       if(i==argc-1){
-          exit(0);
+        dnsExit();
       }
       else{
-        catch_num=atoi(argv[++i]);
+        cache_num=atoi(argv[++i]);
       }
     }
     else{
-        exit(0);
+        dnsExit();
     }
   }
   log_set_level(LOG_DEBUG);
   // log_set_level(debug_lev!=0?atoi(argv[debug_lev]):2);
   load_local_record(&cacheset,file==0?"dnsrelay.txt":argv[file]);
-  init_A_record_cache_default(&cacheset.A.temp);
-  init_A_record_cache_default(&cacheset.AAAA.temp);
+  init_A_record_cache(&cacheset.A.temp,cache_num?cache_num:LRU_BUFFER_LENGTH,CACHE_INFINTE_SIZE,CACHE_FILLING_FACTOR);
+  init_A_record_cache(&cacheset.AAAA.temp,cache_num?cache_num:LRU_BUFFER_LENGTH,CACHE_INFINTE_SIZE,CACHE_FILLING_FACTOR);
   log_info("init cache done");
 
   init_query_server(dns_server==0?"10.3.9.4":argv[dns_server]);

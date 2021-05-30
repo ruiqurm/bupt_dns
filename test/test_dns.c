@@ -73,8 +73,8 @@ int main(){
         }
       }
     }
-    if(error){
     printf("find %d wrong",error);
+    if(error){
     exit(EXIT_FAILURE);}
     else{
       printf("恭喜！\nおめでとうございます\nCongratulations!");
