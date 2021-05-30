@@ -35,7 +35,11 @@ int init(){
 
 int main(){
     init();
-     FILE *in= fopen("dnsrelay1.txt", "r");
+     FILE *in;
+    if(fopen_s(&in,"dnsrelay1.txt","r")!=0){//fopen_s和fopen的接口不一样
+        log_error("file open error:%s",strerror_s("no",513,errno));
+        return false;
+    }
      printf("请确定自己离线中\n");
      Sleep(1000);
     char ip[1024];
@@ -43,6 +47,8 @@ int main(){
 	char result[10240];
   int error=0;
   int x=0;
+
+
     while(fscanf(in, "%s",name)==1){
         printf("%d ===================== %s\n",++x,name);
         struct question dns_question;
@@ -70,5 +76,6 @@ int main(){
     else{
       printf("恭喜！\nおめでとうございます\nCongratulations!");
     }
+    system("pause");
     return 0;
 }

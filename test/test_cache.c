@@ -75,7 +75,7 @@ int main(){
     end_time = clock();
     test_normal(&testcache);
     log_info("test 100000 randomly insert and get successfully in %f",(double)(end_time - start_time) / CLOCKS_PER_SEC);
-    
+
     struct record_data* send_data[10];
     struct record_data _data[10];
     for (int i =0;i<10000;i++){
