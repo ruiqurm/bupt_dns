@@ -144,7 +144,6 @@ struct sockaddr_in query_server;
 int server_sockfd,server_sockfd;//提供服务的sockfd
 int query_sockfd;//向服务器询问用的文件描述符,只支持IPV4
 char recv_buffer[1024];
-struct timeval *timeout; //select函数中timeout参数
 
 int main(int argc, char **argv) {
 
@@ -168,8 +167,9 @@ int main(int argc, char **argv) {
   fd_set rset;//读集合
   FD_ZERO(&rset);
 
-  timeout->tv_usec= SELECT_TTL; //设置timeout的值
-
+  struct timeval timeout; //select函数中timeout参数
+  timeout.tv_usec= SELECT_TTL; //设置timeout的值
+  timeout.tv_sec=0;
   //初始化,处理命令行参数，初始化cache，初始化WSA和socket套接字,设置超时，绑定端口
   init(argc,argv);
 
@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
     FD_SET(query_sockfd,&rset);
     
     int work_fd;  
-    if( (work_fd = select(0,&rset,NULL,NULL,timeout))<0){
+    if( (work_fd = select(0,&rset,NULL,NULL,&timeout))<0){
       //!!!!加处理
       log_info("跳过");
       continue;
@@ -206,7 +206,6 @@ int main(int argc, char **argv) {
           IDAdapter.data[i].valid=false;
         }
       }
-      continue;
     }
 
     handle_relay://处理中继
