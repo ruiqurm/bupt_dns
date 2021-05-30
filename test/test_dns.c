@@ -35,8 +35,8 @@ int main(){
     char ip[1024];
     char name[1024];
 	char result[10240];
+  int error=0;
     while(fscanf(in, "%s%s",ip,name)==2){
-        
         struct question dns_question;
         strcpy( dns_question.label,name);
         dns_question.qclass= HTTP_CLASS;
@@ -50,26 +50,34 @@ int main(){
       if (( (total_size = recvfrom(ss, buffer, MAX_DNS_SIZE, 0,(SA *)&query_server, &len))<0)){
           log_error_shortcut("recvfrom error:");
       }
+      int ip_num;
       int ans_num = read_dns_answers(ans, buffer);
       // printf("%d",ans_num);
-      if(ans_num!=0){sprint_dns(buffer);log_ip("",&ans[0].address);exit(0);}
-      // if(ans_num!=0)printf("%d",ans[0].address.addr.v4);
-      /*
-        if(strcmp(ip,"0.0.0.0")==0){
-            cout<<result;
-            if(strstr(result," UnKnown"))
-            printf("yes\n");
-            else{
-            printf("NOOOOOO\n");
-            }
+      if(ans_num==0&&!strcmp(ip,"0.0.0.0")){
+        continue;
+      }
+      else if(ans_num==0){
+        printf("ERROR %d %s %s\n",++error,ip,name);
+      }
+      else{
+        inet_pton(AF_INET,ip,&ip_num);
+        int flag=0;
+        for(int i=0;i<ans_num;i++){
+          if(ip_num==ans[i].address.addr.v4){
+          flag=1;
+          break;
         }
-        else{
-             if(strstr(result,ip))
-            printf("yes\n");
-            else{
-            printf("NOOOOOO\n");}
         }
-        m(result);*/
+        if(!flag){
+          printf("ERROR %d %s %s\n",++error,ip,name);
+        }
+      }
+    }
+    if(error){
+    printf("find %d wrong",error);
+    exit(EXIT_FAILURE);}
+    else{
+      printf("恭喜！\nおめでとうございます\nCongratulations!");
     }
     return 0;
 }
