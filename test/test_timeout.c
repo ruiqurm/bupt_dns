@@ -1,3 +1,6 @@
+#include <stdio.h>
+#include<stdlib.h>
+#include<windows.h>
 #include "common.h"
 #include <stdio.h>
 #include <windows.h>
@@ -7,6 +10,7 @@ typedef struct sockaddr SA;
 int ss;
 char buffer[1024];
 struct answer ans[50];
+struct dns_header header;
 struct sockaddr_in query_server;
 static inline void log_ip(const char* str,struct IP* addr){
     log_info("%s %d:%d:%d:%d",str,
@@ -31,12 +35,16 @@ int init(){
 
 int main(){
     init();
-     FILE *in= fopen("dnsrelay.txt", "r");
+     FILE *in= fopen("dnsrelay1.txt", "r");
+     printf("请确定自己离线中\n");
+     Sleep(1000);
     char ip[1024];
     char name[1024];
 	char result[10240];
   int error=0;
-    while(fscanf(in, "%s%s",ip,name)==2){
+  int x=0;
+    while(fscanf(in, "%s",name)==1){
+        printf("%d ===================== %s\n",++x,name);
         struct question dns_question;
         strcpy( dns_question.label,name);
         dns_question.qclass= HTTP_CLASS;
@@ -50,28 +58,11 @@ int main(){
       if (( (total_size = recvfrom(ss, buffer, MAX_DNS_SIZE, 0,(SA *)&query_server, &len))<0)){
           log_error_shortcut("recvfrom error:");
       }
-      int ip_num;
-      int ans_num = read_dns_answers(ans, buffer);
-      // printf("%d",ans_num);
-      if(ans_num==0&&!strcmp(ip,"0.0.0.0")){
-        continue;
+      read_dns_header(&header,buffer);
+      if(header.rcode!=5){
+          printf("ERROR %d %s\n",++error,name);
       }
-      else if(ans_num==0){
-        printf("ERROR %d %s %s\n",++error,ip,name);
-      }
-      else{
-        inet_pton(AF_INET,ip,&ip_num);
-        int flag=0;
-        for(int i=0;i<ans_num;i++){
-          if(ip_num==ans[i].address.addr.v4){
-          flag=1;
-          break;
-        }
-        }
-        if(!flag){
-          printf("ERROR %d %s %s\n",++error,ip,name);
-        }
-      }
+      
     }
     if(error){
     printf("find %d wrong",error);

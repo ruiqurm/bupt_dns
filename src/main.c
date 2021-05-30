@@ -19,9 +19,9 @@
 #define _CRT_SECURE_NO_WARNINGS
 
 #define DNS_TTL 1000  //DNS超时时限
-#define SELECT_TTL 10000  //select函数超时时限，单位为微秒
+#define SELECT_TTL 800000  //select函数超时时限，单位为微秒
 
-//允许接收来自IPV6的请求（向下兼容）
+//允许接收来自IPV6的请求（向下兼容）SW
 //取消宏定义可以仅处理Ipv4请求
 #define ACCEPT_IPV6_REQUES
 
@@ -520,9 +520,6 @@ void init(int argc,char **argv) {
   }
   log_info("setting timeout = %d ms",timeout);
   #endif
-  if(signal(SIGINT, on_SIGINT)<0){
-    log_fatal_exit_shortcut("can't set SIGINT");
-  }
   log_info("init all done");
   bind_addr();
 }

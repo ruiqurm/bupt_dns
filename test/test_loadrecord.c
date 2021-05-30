@@ -40,6 +40,6 @@ int main(int argc,char**argv){
     check_black("www.yule21.com","0.0.0.0");
     check_black("www.yysky.net","0.0.0.0");
     check_black("www.yyqy.com","0.0.0.0");
-    printf("test successfully\n");
+    printf("恭喜！\nおめでとうございます\nCongratulations!");
     return 0;
 }

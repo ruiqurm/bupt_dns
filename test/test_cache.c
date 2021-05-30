@@ -105,6 +105,6 @@ int main(){
     // printf("%d",set_cache_A_record((const char*)&records[0].label,&records[0].ip));
     // printf("%d",_cache((const char*)&records[0].label,&records[0].ip));
     free_cache(&testcache);
-    log_info("successful");
+    printf("恭喜！\nおめでとうございます\nCongratulations!");
     return 0;
 }
