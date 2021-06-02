@@ -1,5 +1,5 @@
 #include "log.h"
-
+#define _CRT_SECURE_NO_WARNINGS
 
 
 /*
@@ -7,7 +7,12 @@
 */
 static struct logging {
   void *udata;
-  log_LockFn lock;
+  #ifdef _linux
+  pthread_mutex_t lock;
+  #elif _WIN64
+  HANDLE  lock;
+  #endif
+  bool has_lock;
   int level;
   bool quiet;
 } LOGGING, FILE_LOGGING;
@@ -15,24 +20,42 @@ static struct logging {
 static int has_init_file = 0;
 
 static void lock(void) {
-  if (LOGGING.lock) {
-    LOGGING.lock(true, LOGGING.udata);
+  if (LOGGING.has_lock) {
+  #ifdef _linux
+  pthread_mutex_lock(&LOGGING.lock);
+  #elif _WIN64
+  WaitForSingleObject(LOGGING.lock, INFINITE);
+  #endif
+    
   }
 }
 
 static void unlock(void) {
-  if (LOGGING.lock) {
-    LOGGING.lock(false, LOGGING.udata);
+  if (LOGGING.has_lock) {
+      #ifdef _linux
+      pthread_mutex_unlock(&LOGGING.lock);
+      #elif _WIN64
+      ReleaseMutex(LOGGING.lock);
+      #endif
   }
 }
 static void lock_file(void) {
-  if (FILE_LOGGING.lock) {
-    FILE_LOGGING.lock(true, FILE_LOGGING.udata);
+  if (FILE_LOGGING.has_lock) {
+    #ifdef _linux
+    pthread_mutex_lock(&FILE_LOGGING.lock);
+    #elif _WIN64
+    WaitForSingleObject(FILE_LOGGING.lock, INFINITE);
+    #endif
   }
 }
+
 static void unlock_file(void) {
-  if (FILE_LOGGING.lock) {
-    FILE_LOGGING.lock(false, FILE_LOGGING.udata);
+  if (FILE_LOGGING.has_lock) {
+      #ifdef _linux
+      pthread_mutex_unlock(&FILE_LOGGING.lock);
+      #elif _WIN64
+      ReleaseMutex(FILE_LOGGING.lock);
+      #endif
   }
 }
 static void init_event(log_Event *ev, void *udata) { //配置时间和流
@@ -74,9 +97,13 @@ static void file_callback(log_Event *ev) { //向文件写
 /*
 外部接口
 */
-inline static void set_lock(struct logging *log, log_LockFn fn, void *udata) {
-  log->lock = fn;
-  log->udata = udata;
+inline static void init_lock(struct logging *log) {
+  #ifdef _linux
+  pthread_mutex_init(&log->lock,NULL);
+  #elif _WIN64
+  log->lock = CreateMutex(NULL, FALSE, NULL);
+  #endif
+  log->has_lock =true;
 }
 inline static void set_level(struct logging *log, int level) {
   log->level = level;
@@ -84,19 +111,19 @@ inline static void set_level(struct logging *log, int level) {
 inline static void set_quiet(struct logging *log, bool enable) {
   log->quiet = enable;
 }
-
-void log_set_lock(log_LockFn fn, void *udata) { set_lock(&LOGGING, fn, udata); }
+void log_init_lock() { init_lock(&LOGGING); }
 
 void log_set_level(int level) { set_level(&LOGGING, level); }
 
 void log_set_quiet(bool enable) { set_quiet(&LOGGING, enable); }
 
-void flog_set_lock(log_LockFn fn, void *udata) {
-  set_lock(&FILE_LOGGING, fn, udata);
+void flog_init_lock() {
+  init_lock(&FILE_LOGGING);
 }
 void flog_set_level(int level) { set_level(&FILE_LOGGING, level); }
 
 void flog_set_quiet(bool enable) { set_quiet(&FILE_LOGGING, enable); }
+
 bool filelog_init(const char *filename) {
   FILE *fp;
   char error_buffer[36];
@@ -108,6 +135,7 @@ bool filelog_init(const char *filename) {
   has_init_file = 1;
   return true;
 }
+
 void filelog_close() {
   if (FILE_LOGGING.udata) {
     fclose(FILE_LOGGING.udata);

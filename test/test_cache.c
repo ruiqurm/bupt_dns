@@ -5,6 +5,7 @@
 #define DEBUG 1
 #include"cache.h"
 #include"log.h"
+
 struct myrecord {
   struct IP ip;
   time_t ttl; //过期时间
@@ -74,7 +75,7 @@ int main(){
     end_time = clock();
     test_normal(&testcache);
     log_info("test 100000 randomly insert and get successfully in %f",(double)(end_time - start_time) / CLOCKS_PER_SEC);
-    
+
     struct record_data* send_data[10];
     struct record_data _data[10];
     for (int i =0;i<10000;i++){
@@ -104,6 +105,6 @@ int main(){
     // printf("%d",set_cache_A_record((const char*)&records[0].label,&records[0].ip));
     // printf("%d",_cache((const char*)&records[0].label,&records[0].ip));
     free_cache(&testcache);
-    log_info("successful");
+    printf("恭喜！\nおめでとうございます\nCongratulations!");
     return 0;
 }

@@ -42,7 +42,6 @@ int main(int argc,char**argv){
         hashnode* node = &table.nodes[i];
         int max_count=100;
         while(node->next){
-            
             node = node->next;
             int d = ((tdata*)node->record)->a;
             if(false==check[d]){
@@ -51,7 +50,6 @@ int main(int argc,char**argv){
                 printf("%d:redundant element\n",i);
                 exit(EXIT_FAILURE);
             }
-            
             max_count--;
             if(max_count<=0){
                 printf("%d:last member not null\n",i);
@@ -88,5 +86,7 @@ int main(int argc,char**argv){
     printf("get %d element randomly with table sized %d in %f s\n",TEST_SIZE,table.size,(double)(next - now) / CLOCKS_PER_SEC);
 
     free_hashtable(&table);
+    
+    printf("恭喜！\nおめでとうございます\nCongratulations!");
     return 0;
 }

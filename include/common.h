@@ -23,8 +23,7 @@
 // DNS query标记
 #define FLAG_QUERY 0x0100
 
-// DNS 回复头标记 （后面改）
-#define FLAG_RESPONSE_NORMAL 0x8150
+#define FLAG_RESPONSE_NORMAL 0x8000
 
 //判断是否是两字节
 #define IN_16b_RANGE(x) ((int)x >= 0 && (int)x <= 0xffff)
@@ -80,13 +79,25 @@ extern const int QUERY_SIZE;
  *                       *
  *************************/
 
+//
+enum RCODE {RCODE_NO_ERROR=0,
+            RCDOE_FORMAT_ERROR=1,
+            RCODE_FAILURE=2,
+            RCODE_NAME_ERROR=3,
+            RCODE_NOT_IMPLEMENTED=4,
+            RCODE_REFUSED=5};
 // RR type
-enum RRtype { A = 1, NS = 2, CNAME = 5, SOA = 6, PTR = 12, MX = 15, AAAA = 28 };
+enum RRtype { RRTYPE_A = 1, 
+              RRTYPE_NS = 2, 
+              RRTYPE_CNAME = 5, 
+              RRTYPE_SOA = 6, 
+              RRTYPE_PTR = 12, 
+              RRTYPE_MX = 15, 
+              RRTYPE_AAAA = 28 };
 const char* RRtype_to_str(int rr_type);
 
 // RR class
 enum Class { HTTP_CLASS = 1, NONE_CLASS = 254, ALL_CLASS = 255 };
-
 enum { IPV4 = 4, IPV6 = 6 };
 
 /** @union ip
@@ -375,6 +386,23 @@ int write_dns_answer(char *buffer, const char *name, int type, int class,
 /********************
  *   快速发送接口    *
  ********************/
+
+
+void set_header_id(char *buffer,unsigned short id);
+
+void set_header_flag(char*buffer,unsigned short flag);
+
+void set_header_rcode_failure(char*buffer);
+
+void set_header_rcode_not_implemented(char*buffer);
+
+void set_header_rcode_refused(char*buffer);
+void set_header_rcode_name_error(char*buffer);
+void set_header_rcode_format_error(char*buffer);
+
+void set_header_response(char*buffer);
+
+void set_header_query(char*buffer);
 
 /**
  * @brief 写一条DNS查询

@@ -12,6 +12,7 @@ ADD_TEST(NAME test_cache COMMAND test_cache)
 ADD_EXECUTABLE(test_cache test_cache.c)
 TARGET_LINK_LIBRARIES(test_cache cachelib)
 
+
 ADD_TEST(NAME test_hash COMMAND test_hash)
 ADD_EXECUTABLE(test_hash test_hash.c)
 TARGET_LINK_LIBRARIES(test_hash hash)
@@ -20,3 +21,11 @@ TARGET_LINK_LIBRARIES(test_hash hash)
 ADD_TEST(NAME test_loadrecord COMMAND test_loadrecord)
 ADD_EXECUTABLE(test_loadrecord test_loadrecord.c)
 TARGET_LINK_LIBRARIES(test_loadrecord localrecord)
+
+ADD_TEST(NAME test_dns COMMAND test_dns)
+ADD_EXECUTABLE(test_dns test_dns.c)
+TARGET_LINK_LIBRARIES(test_dns adns)
+
+
+ADD_EXECUTABLE(test_timeout test_timeout.c)
+TARGET_LINK_LIBRARIES(test_timeout adns)

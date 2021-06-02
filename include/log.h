@@ -31,10 +31,13 @@ SOFTWARE.
 
 #include<stdlib.h>
 
+
+// #include <windows.h> 
 #if defined(_WIN64) || defined( _WIN32)
 #include <windows.h>
 #elif __linux
 #include<errno.h>
+#include<pthread.h>
 #endif
 
 
@@ -148,7 +151,7 @@ void log_log(int level, const char *file, int line, const char *fmt, ...);
 /**
  * @brief log锁
  */
-void log_set_lock(log_LockFn fn, void *udata);
+void log_init_lock();
 
 /**
  * @brief log调整过滤等级
@@ -178,7 +181,7 @@ void filelog_close();
 /**
  * @brief 文件log锁
  */
-void filelog_set_lock(log_LockFn fn, void *udata);
+void filelog_init_lock();
 
 /**
  * @brief 文件log调整过滤等级
@@ -192,3 +195,8 @@ void filelog_set_level(int level);
  * @param enable true开启 false关闭
  */
 void filelog_set_quiet(bool enable);
+
+
+
+
+void init_file_lock();
