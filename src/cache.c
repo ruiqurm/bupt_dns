@@ -462,17 +462,20 @@ int add_A_record(struct record*record,void*data){
     log_debug("replace new A record;label= %s",((struct record_data*)record->data)->label);
     #endif 
     tmp = ((struct record_data*)record->data)->next;
-    memcpy_s(record->data,sizeofstruct,data,sizeofstruct);//覆盖原数据
+    // memcpy_s(record->data,sizeofstruct,data,sizeofstruct);//覆盖原数据
+    memcpy(record->data,data,sizeofstruct);//覆盖原数据
     ((struct record_data*)record->data)->next=tmp;
   }else{
     #ifdef LOG_INCLUDED
     log_debug("record has no data before");
     #endif 
     record->data = malloc(sizeofstruct);
-    memcpy_s(record->data,sizeofstruct,data,sizeofstruct);
+    memcpy(record->data,data,sizeofstruct);
+    // memcpy_s(record->data,sizeofstruct,data,sizeofstruct);
     len = strlen(((struct record_data*)data)->label) + 1;//注意加1
     ((struct record_data*)record->data)->label = malloc(len);
-    strcpy_s(((struct record_data*)record->data)->label,len,((struct record_data*)data)->label);//复制name
+    strcpy(((struct record_data*)record->data)->label,((struct record_data*)data)->label);//复制name
+    // strcpy_s(((struct record_data*)record->data)->label,len,((struct record_data*)data)->label);//复制name
     record->size = sizeofstruct + len;
     #ifdef LOG_INCLUDED
     log_debug("add new A record;label= %s,ip=%d",((struct record_data*)record->data)->label,((struct record_data*)record->data)->ip.addr.v4);
@@ -503,17 +506,20 @@ int add_A_multi_record(struct record*record,void*_data[],int size){
       //dest->next先被赋值，然后dest=dest->next
       //相当于转到下一个节点
       (dest)->next = malloc(sizeofstruct);
-      memcpy_s(dest->next,sizeofstruct,data[i],sizeofstruct);
+      // memcpy_s(dest->next,sizeofstruct,data[i],sizeofstruct);
+      memcpy(dest->next,data[i],sizeofstruct);
       dest = dest->next;
       dest->label= ((struct record_data*)(record->data))->label;
       // (**dest).label = NULL;//复制label
     }else{
       dest = record->data = malloc(sizeofstruct);
-      memcpy_s(dest,sizeofstruct,data[i],sizeofstruct);
+      // memcpy_s(dest,sizeofstruct,data[i],sizeofstruct);
+      memcpy(dest,data[i],sizeofstruct);
       len = strlen(data[i]->label) + 1;//注意加1
      dest->label = malloc(len);
     //  printf("%lld\n",(*dest)->label);
-      strcpy_s(dest->label,len,data[i]->label);//复制name
+      strcpy(dest->label,data[i]->label);//复制name
+      // strcpy_s(dest->label,len,data[i]->label);//复制name
     }
     #ifdef LOG_INCLUDED
     log_debug("add new A record;pre=%s  label= %s",data[0]->label,dest->label);
@@ -675,7 +681,8 @@ bool set_static_cache(struct staticCache* Cache,const char* label,const struct I
       }
       data->next = (struct static_record_data*)malloc(sizeof(struct static_record_data));
       data =data->next;
-      memcpy_s(&data->ip,sizeof(struct IP),ip,sizeof(struct IP));
+      memcpy(&data->ip,ip,sizeof(struct IP));
+      // memcpy_s(&data->ip,sizeof(struct IP),ip,sizeof(struct IP));
       data->label = first_label;
       data->next=NULL;
     }else{
@@ -685,9 +692,11 @@ bool set_static_cache(struct staticCache* Cache,const char* label,const struct I
         log_error("static cache overflow. top == %d",Cache->top);
         return false;
       }
-      memcpy_s(&Cache->data[top].ip,sizeof(struct IP),ip,sizeof(struct IP));
+      memcpy(&Cache->data[top].ip,ip,sizeof(struct IP));
+      // memcpy_s(&Cache->data[top].ip,sizeof(struct IP),ip,sizeof(struct IP));
       Cache->data[top].label = (char*)malloc(len);
-      memcpy_s(Cache->data[top].label,len,label,len);
+      memcpy(Cache->data[top].label,label,len);
+      // memcpy_s(Cache->data[top].label,len,label,len);
       Cache->data[top].next=NULL;
       set_hashnode(&Cache->table,(void*)label,&Cache->data[top],NULL);
       Cache->top+=1;

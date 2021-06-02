@@ -1,4 +1,5 @@
 #include "hash.h"
+#include<math.h>
 #include<stdio.h>
 
 //找到比n大的最小质数

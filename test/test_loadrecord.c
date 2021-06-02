@@ -24,9 +24,11 @@ int main(int argc,char**argv){
     log_set_level(LOG_DEBUG);
     char file[128];
     if(argc==2){
-        strcpy_s(file,128,argv[1]);
+        // strcpy_s(file,128,argv[1]);
+        strcpy(file,argv[1]);
     }else{
-        strcpy_s(file,128,"dnsrelay.txt");
+        strcpy(file,"dnsrelay.txt");
+        // strcpy_s(file,128,"dnsrelay.txt");
     }
     
     if(!load_local_record(&cacheset,file)){

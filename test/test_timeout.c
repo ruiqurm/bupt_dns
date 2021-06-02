@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include<stdlib.h>
-#include<windows.h>
 #include "common.h"
 #include <stdio.h>
+#include "log.h"
+#ifdef _WIN64
 #include <windows.h>
 #include <WinSock2.h>
-#include "log.h"
+#else
+#include <unistd.h>
+#endif
+
 typedef struct sockaddr SA;
 int ss;
 char buffer[1024];
@@ -17,13 +21,15 @@ static inline void log_ip(const char* str,struct IP* addr){
               addr->addr.v4byte[0],addr->addr.v4byte[1],addr->addr.v4byte[2],addr->addr.v4byte[3]);
 }
 int init(){
+  #ifdef _WIN64
     WSADATA wsaData;
     int x;
     if(x=WSAStartup(MAKEWORD(2,2),&wsaData)!=0){//协商版本winsock 2.2
       log_fatal_exit_shortcut("winsock init error");
     }
-
     system("chcp 65001");//修改控制台格式为65001
+  #endif
+    
     if( (ss = socket(AF_INET, SOCK_DGRAM, 0))<0){
       log_fatal_exit_shortcut("socket open error");
   }
@@ -36,12 +42,16 @@ int init(){
 int main(){
     init();
      FILE *in;
-    if(fopen_s(&in,"dnsrelay1.txt","r")!=0){//fopen_s和fopen的接口不一样
-        log_error("file open error:%s",strerror_s("no",513,errno));
-        return false;
+    if( (in = fopen("dnsrelay1.txt","r"))==NULL){//fopen_s和fopen的接口不一样
+        log_error_shortcut("file open error:");
+        exit(EXIT_FAILURE);
     }
      printf("请确定自己离线中\n");
+     #ifdef _WIN64
      Sleep(1000);
+     #else
+     sleep(1000);
+     #endif
     char ip[1024];
     char name[1024];
 	char result[10240];

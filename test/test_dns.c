@@ -1,7 +1,9 @@
 #include "common.h"
 #include <stdio.h>
+#ifdef _WIN64
 #include <windows.h>
 #include <WinSock2.h>
+#endif
 #include "log.h"
 typedef struct sockaddr SA;
 int ss;
@@ -13,13 +15,14 @@ static inline void log_ip(const char* str,struct IP* addr){
               addr->addr.v4byte[0],addr->addr.v4byte[1],addr->addr.v4byte[2],addr->addr.v4byte[3]);
 }
 int init(){
+  #ifdef _WIN64
     WSADATA wsaData;
     int x;
     if(x=WSAStartup(MAKEWORD(2,2),&wsaData)!=0){//协商版本winsock 2.2
       log_fatal_exit_shortcut("winsock init error");
     }
-
     system("chcp 65001");//修改控制台格式为65001
+    #endif
     if( (ss = socket(AF_INET, SOCK_DGRAM, 0))<0){
       log_fatal_exit_shortcut("socket open error");
   }

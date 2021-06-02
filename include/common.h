@@ -3,13 +3,14 @@
  * @file common.h
  * @brief 提供封装后的DNS接口
  */
+#include<stdbool.h>
 #ifdef __linux
 #include <arpa/inet.h>
+
 #elif defined(_WIN64) || defined( _WIN32)
 #include<ws2tcpip.h>
 #include <winsock2.h>
 #include <stdint.h>
-#include<stdbool.h>
 #pragma comment(lib,"ws2_32.lib")
 #define u_int8_t unsigned char
 #endif

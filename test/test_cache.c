@@ -42,7 +42,8 @@ int main(){
     struct record_data tmp_data;
     tmp_data.next=NULL;
     tmp_data.label = malloc(256); 
-    strcpy_s(tmp_data.label,256,records[0].label);
+    strcpy(tmp_data.label,records[0].label);
+    // strcpy_s(tmp_data.label,256,records[0].label);
     tmp_data.ip = records[0].ip;
     tmp_data.ttl = time(NULL)+1000000;
     set_cache_A_record(&testcache,tmp_data.label,(void*)&tmp_data);    
@@ -56,7 +57,8 @@ int main(){
         if(now%500==0)now =time(NULL);
         if(r%4==0){
             log_debug("set cache");
-            strcpy_s(tmp_data.label,256,records[r].label);
+            strcpy(tmp_data.label,records[r].label);
+            // strcpy_s(tmp_data.label,256,records[r].label);
             tmp_data.ip = records[r].ip;
             tmp_data.ttl = records[r].ttl;
             set_cache_A_record(&testcache,tmp_data.label,&tmp_data);
@@ -85,7 +87,8 @@ int main(){
 
         if(r%4==0&&r!=0){
             for(int j=0;j<4;j++){
-                memcpy_s(&_data[j].ip,sizeof(struct IP),&records[r+j].ip,sizeof(struct IP));
+                memcpy(&_data[j].ip,&records[r+j].ip,sizeof(struct IP));
+                // memcpy_s(&_data[j].ip,sizeof(struct IP),&records[r+j].ip,sizeof(struct IP));
                 _data[j].ttl = records[r+j].ttl;
                 _data[j].label = records[r+j].label;
             }

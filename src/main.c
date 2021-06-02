@@ -8,8 +8,9 @@
 #include <string.h>
 #include <signal.h>
 #include <time.h>
-#include <conio.h>
-
+#ifdef __linux
+#include <sys/select.h>
+#endif
 
 /*************************
  *                       *
@@ -34,7 +35,7 @@ typedef struct sockaddr_in _sockaddr_in;
 typedef struct sockaddr SA;
 
 #ifdef __linux
-typedef WORD unsigned short
+typedef unsigned short WORD ;
 #endif
 
 //IP转换器的大小
@@ -183,31 +184,31 @@ int main(int argc, char **argv) {
     FD_SET(query_sockfd,&rset);
     
     int work_fd;  
-    if( (work_fd = select(0,&rset,NULL,NULL,&timeout))<0){
+    if( (work_fd = select(max_fd,&rset,NULL,NULL,NULL))<0){
       //!!!!加处理
       log_info("跳过");
       continue;
     }
 
-    //查找超时的项并处理
-    if(work_fd==0){
-      for(int i=0;i<IDAadpter_SIZE;i++){
-        if(IDAdapter.data[i].valid&&(clock()-IDAdapter.data[i].start>=DNS_TTL)){
-          IDtoAddr * idtoaddr = &IDAdapter.data[i].info;
-          log_info("超时回复");
-          set_header_flag(IDAdapter.data[i].message,FLAG_RESPONSE_NORMAL);
-          set_header_rcode_refused(IDAdapter.data[i].message);
-          if (sendto(server_sockfd, IDAdapter.data[i].message, strlen(IDAdapter.data[i].message), 0,(SA *)&idtoaddr->addr,
-                    sizeof(idtoaddr->addr)) < 0) {
-              log_error_shortcut("sendto error:");
-          } else {
-            log_info("发送成功");
-          }
-          IDAdapter.data[i].valid=false;
-        }
-      }
-    }
-
+    // //查找超时的项并处理
+    // if(work_fd==0){
+    //   for(int i=0;i<IDAadpter_SIZE;i++){
+    //     if(IDAdapter.data[i].valid&&(clock()-IDAdapter.data[i].start>=DNS_TTL)){
+    //       IDtoAddr * idtoaddr = &IDAdapter.data[i].info;
+    //       log_info("超时回复");
+    //       set_header_flag(IDAdapter.data[i].message,FLAG_RESPONSE_NORMAL);
+    //       set_header_rcode_refused(IDAdapter.data[i].message);
+    //       if (sendto(server_sockfd, IDAdapter.data[i].message, strlen(IDAdapter.data[i].message), 0,(SA *)&idtoaddr->addr,
+    //                 sizeof(idtoaddr->addr)) < 0) {
+    //           log_error_shortcut("sendto error:");
+    //       } else {
+    //         log_info("发送成功");
+    //       }
+    //       IDAdapter.data[i].valid=false;
+    //     }
+    //   }
+    // }
+    
     handle_relay://处理中继
     if (FD_ISSET(query_sockfd,&rset)){
       //优先处理未完成的请求
@@ -235,7 +236,8 @@ int main(int argc, char **argv) {
           struct record_data* send_data[20];
           now = time(NULL);
           for(int i=0;i<ans_num;i++){
-              memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP));
+              // memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP));
+              memcpy(&tmp_ans_data[count].ip,&ans[i].address,sizeof(struct IP));
               tmp_ans_data[count].label = ans[i].name;
               tmp_ans_data[count].ttl = now + ans[i].ttl;
               send_data[count] = &tmp_ans_data[count];
@@ -315,7 +317,8 @@ int main(int argc, char **argv) {
           ans[count].type = question.qtype;
           ans[count].class_ = question.qclass;
           ans[count].has_cname = false;
-          strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
+          strcpy(ans[count].name,question.label);
+          // strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
           count += 1;
           static_data = static_data->next;
         }
@@ -325,11 +328,13 @@ int main(int argc, char **argv) {
         while(data){
           ans[count].ttl = data->ttl - now;
           memcpy(&ans[count].address, &data->ip, sizeof(struct IP));
-          strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
+          strcpy(ans[count].name,question.label);
+          // strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
           ans[count].type = question.qtype;
           ans[count].class_ = question.qclass;
           ans[count].has_cname = false;
-          strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
+          // strcpy_s(ans[count].name, sizeof(ans[0].name),question.label);
+          strcpy(ans[count].name, question.label);
           count++;
           data=data->next;
         }
@@ -393,14 +398,19 @@ inline static void bind_addr(){
     servaddr.sin6_port = htons(DNS_SERVER_PORT);
     #else
     servaddr.sin_family = AF_INET;
-    servaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(DNS_SERVER_PORT);
     #endif
     if (bind(server_sockfd, (SA *)&servaddr, sizeof(servaddr)) < 0) {
     //!可能无权限
       log_fatal_exit_shortcut("bind error");
     }
-    log_info("Listen on localhost:53");
+    int len = sizeof(servaddr);
+  if (getsockname(server_sockfd, (SA*)&servaddr, &len) == -1)
+      perror("getsockname");
+  else{
+      log_ip("listen on ",&servaddr);
+  }
 }
 
 inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type,clock_t time,char *buffer){
@@ -411,7 +421,8 @@ inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsign
       IDAdapter.data[next].info.old_id = id;
       IDAdapter.data[next].info.type = type;
       IDAdapter.data[next].start = time;
-      strcpy_s(IDAdapter.data[next].message,1024,buffer);
+      strcpy(IDAdapter.data[next].message,buffer);
+      // strcpy_s(IDAdapter.data[next].message,1024,buffer);
       IDAdapter.next = (IDAdapter.next + 1) % IDAadpter_SIZE;
       return next;
   }else{
@@ -512,7 +523,7 @@ void init(int argc,char **argv) {
   if( (query_sockfd = socket(AF_INET, SOCK_DGRAM, 0))<0){
       log_fatal_exit_shortcut("socket open error");
   }
-  #ifdef _linux
+  #ifdef __linux
   struct timeval tv;
   tv.tv_sec = 1;
   tv.tv_usec = 0;
@@ -545,7 +556,7 @@ void clean_up(){
     closesocket(query_sockfd);
     closesocket(server_sockfd);
     WSACleanup();
-  #elif _linux
+  #elif __linux
   #endif
   free_staticCache(&cacheset.A.local);
   free_staticCache(&cacheset.AAAA.local);

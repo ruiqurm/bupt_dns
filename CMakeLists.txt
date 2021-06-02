@@ -9,8 +9,11 @@ include_directories(
 
 # find_path(PTHREADW32_INCLUDE_DIR pthread.h)
 # message(${PTHREADW32_INCLUDE_DIR})
+if(CMAKE_SYSTEM_NAME MATCHES "Windows")
+    link_libraries(ws2_32 wsock32)
+endif()
 
-link_libraries(ws2_32 wsock32)
+
 add_subdirectory("src")
 enable_testing()
 add_subdirectory("test")

@@ -17,8 +17,8 @@ bool load_local_record(struct cacheset *cacheset,const char* filename){
     int v4 = 0,v6 = 0,black=0;
     int sizeofip = sizeof(struct IP);
 
-    if(fopen_s(&file,filename,"r")!=0){//fopen_s和fopen的接口不一样
-        log_error("file open error:%s",strerror_s(name,513,errno));
+    if( (file =fopen(filename,"r"))==NULL){
+        log_error("file open error:%s",strerror(errno));
         return false;
     }
     while (fgets(buffer, 630, file)){

@@ -7,7 +7,7 @@
 */
 static struct logging {
   void *udata;
-  #ifdef _linux
+  #ifdef __linux
   pthread_mutex_t lock;
   #elif _WIN64
   HANDLE  lock;
@@ -21,7 +21,7 @@ static int has_init_file = 0;
 
 static void lock(void) {
   if (LOGGING.has_lock) {
-  #ifdef _linux
+  #ifdef __linux
   pthread_mutex_lock(&LOGGING.lock);
   #elif _WIN64
   WaitForSingleObject(LOGGING.lock, INFINITE);
@@ -32,7 +32,7 @@ static void lock(void) {
 
 static void unlock(void) {
   if (LOGGING.has_lock) {
-      #ifdef _linux
+      #ifdef __linux
       pthread_mutex_unlock(&LOGGING.lock);
       #elif _WIN64
       ReleaseMutex(LOGGING.lock);
@@ -41,7 +41,7 @@ static void unlock(void) {
 }
 static void lock_file(void) {
   if (FILE_LOGGING.has_lock) {
-    #ifdef _linux
+    #ifdef __linux
     pthread_mutex_lock(&FILE_LOGGING.lock);
     #elif _WIN64
     WaitForSingleObject(FILE_LOGGING.lock, INFINITE);
@@ -51,7 +51,7 @@ static void lock_file(void) {
 
 static void unlock_file(void) {
   if (FILE_LOGGING.has_lock) {
-      #ifdef _linux
+      #ifdef __linux
       pthread_mutex_unlock(&FILE_LOGGING.lock);
       #elif _WIN64
       ReleaseMutex(FILE_LOGGING.lock);
@@ -98,7 +98,7 @@ static void file_callback(log_Event *ev) { //向文件写
 外部接口
 */
 inline static void init_lock(struct logging *log) {
-  #ifdef _linux
+  #ifdef __linux
   pthread_mutex_init(&log->lock,NULL);
   #elif _WIN64
   log->lock = CreateMutex(NULL, FALSE, NULL);
@@ -126,9 +126,10 @@ void flog_set_quiet(bool enable) { set_quiet(&FILE_LOGGING, enable); }
 
 bool filelog_init(const char *filename) {
   FILE *fp;
-  char error_buffer[36];
-  if (fopen_s(&fp,"log.log", "w+")!=0){
-      log_error("log file open error:%s",strerror_s(error_buffer,36,errno));
+  // char error_buffer[36];
+  
+  if ((fp = fopen("log.log", "w+"))==NULL){
+    log_error_shortcut("log file open error:");
       return false;
     }
   FILE_LOGGING.udata = fp;
