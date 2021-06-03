@@ -2,6 +2,7 @@
 #include "common.h"
 #include"hash.h"
 #include<time.h>
+#include<pthread.h>
 #include<stdbool.h>
 /*************************
  *                       *
@@ -87,6 +88,8 @@ typedef struct link_list {
   add_multi_data add_multi;
   check_data check;
   get_data_label get_label;
+  // pthread_rwlock_t rwlock;
+  pthread_mutex_t lock;
 } cache;
 
 struct staticCache{
@@ -146,8 +149,8 @@ void free_cache(cache*Cache);
  * @param label 标签
  * @return record_data 结构体
  */
+struct record_data *_get_cache_A_record(cache* Cache,const char *label);
 struct record_data *get_cache_A_record(cache* Cache,const char *label);
-
 /**
  * @brief cache放入数据
  *
@@ -156,9 +159,11 @@ struct record_data *get_cache_A_record(cache* Cache,const char *label);
  * @param ttl time to live
  * @return 返回1则成功，否则失败
  */
+int _set_cache_A_record(cache*Cache,const char *label, void*data);
 int set_cache_A_record(cache*Cache,const char *label, void*data);
-int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size);
 
+int _set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size);
+int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size);
 // int set_cache_A_record(cache*Cache,const char *label, const struct IP *ip, time_t ttl);
 
 // /**
@@ -172,7 +177,8 @@ int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size
 void test_normal(cache* Cache); //检查cache是否正常
 
 
-
+// void freeze_cache(struct staticCache* Cache);//不允许继续添加
+// void unfreeze_cache(struct staticCache* Cache);
 bool set_static_cache(struct staticCache* Cache,const char* label,const struct IP*ip);
 void init_staticCache(struct staticCache* Cache,int size);
 void free_staticCache(struct staticCache* Cache);

@@ -8,6 +8,9 @@
 #include <string.h>
 #include <signal.h>
 #include <time.h>
+// #define _XOPEN_SOURCE 500
+#include <pthread.h>
+
 #ifdef __linux
 #include <sys/select.h>
 #endif
@@ -70,6 +73,7 @@ struct{
   }data[IDAadpter_SIZE];
   bool is_init;
   unsigned short next;
+  pthread_rwlock_t rwlock;   //读写锁
 }IDAdapter;
 
 
@@ -225,18 +229,18 @@ int main(int argc, char **argv) {
         log_error("invalid id");
         goto handle_request;//跳过本次处理
       }
-      log_info("报文id=%d,旧id=%d",header.id,iptoaddr->old_id);
-      if(iptoaddr->type == RRTYPE_A){
+      log_info("报文id=%d,旧id=%d type=%d",header.id,iptoaddr->old_id,iptoaddr->type);
+      if(iptoaddr->type == RRTYPE_A||iptoaddr->type==RRTYPE_AAAA){
         //可以缓存的类型
         ans_num = read_dns_answers(ans, recv_buffer);
         // log_debug("ans_num: %d\n",ans_num);
-        
         if (ans_num > 0) {
           int count =0;
           struct record_data* send_data[20];
           now = time(NULL);
           for(int i=0;i<ans_num;i++){
-              // memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP));
+              // memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP)); 
+              // puts(ans[0].name);
               memcpy(&tmp_ans_data[count].ip,&ans[i].address,sizeof(struct IP));
               tmp_ans_data[count].label = ans[i].name;
               tmp_ans_data[count].ttl = now + ans[i].ttl;
@@ -302,7 +306,9 @@ int main(int argc, char **argv) {
         continue;
       }
       if(question.qtype==RRTYPE_A){
+        puts(question.label);
         static_data = get_static_cache(&cacheset.A.local,question.label);
+        // if(!static_data)puts("aaaaa");
         if(!static_data)data = get_cache_A_record(&cacheset.A.temp,question.label);
       }else if (question.qtype==RRTYPE_AAAA){
         static_data = get_static_cache(&cacheset.AAAA.local,question.label);
@@ -342,6 +348,8 @@ int main(int argc, char **argv) {
       if(count){
         //取到缓存   
         log_info("取到缓存");
+        // printf("aaa\n%04x:%04x:%04x:%04x",
+        // ans[0].address.addr.v6byte[0], ans[0].address.addr.v6byte[1], ans[0].address.addr.v6byte[2],ans[0].address.addr.v6byte[3]);
         _size = write_dns_response_by_query(recv_buffer, ans, count);
         // sprint_dns(query_buffer);
         if (sendto(server_sockfd, recv_buffer, _size, 0, (SA *)&cliaddr,
@@ -414,6 +422,7 @@ inline static void bind_addr(){
 }
 
 inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsigned char type,clock_t time,char *buffer){
+  pthread_rwlock_wrlock(&IDAdapter.rwlock);
   short next = IDAdapter.next;
   if(!IDAdapter.data[next].valid){
       IDAdapter.data[next].valid=true;
@@ -424,15 +433,19 @@ inline static short IDAdapter_push(unsigned short id,_sockaddr_in* source,unsign
       strcpy(IDAdapter.data[next].message,buffer);
       // strcpy_s(IDAdapter.data[next].message,1024,buffer);
       IDAdapter.next = (IDAdapter.next + 1) % IDAadpter_SIZE;
+      pthread_rwlock_unlock(&IDAdapter.rwlock);
       return next;
   }else{
     return -1;
   }
 }
 inline static void IDAdapter_pop(short pos){
+  pthread_rwlock_rdlock(&IDAdapter.rwlock);
   IDAdapter.data[pos % IDAadpter_SIZE].valid=false;
+  pthread_rwlock_unlock(&IDAdapter.rwlock);
 }
 inline static IDtoAddr* IDAdapter_get(short pos){
+  //可能需要加锁
   return IDAdapter.data[pos % IDAadpter_SIZE].valid?&IDAdapter.data[pos % IDAadpter_SIZE].info:NULL;
 }
 
@@ -540,6 +553,7 @@ void init(int argc,char **argv) {
   #endif
   log_info("init all done");
   bind_addr();
+  pthread_rwlock_init(&IDAdapter.rwlock, NULL);
 }
 void on_SIGINT(int sig){
   log_info("catch SIGINT");

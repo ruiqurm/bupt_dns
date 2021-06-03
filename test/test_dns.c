@@ -55,6 +55,7 @@ int main(){
       }
       int ip_num;
       int ans_num = read_dns_answers(ans, buffer);
+      // log_info("%d",ans_num);
       // printf("%d",ans_num);
       if(ans_num==0&&!strcmp(ip,"0.0.0.0")){
         continue;

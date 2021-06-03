@@ -140,7 +140,26 @@ int multiquery(int sockfd, struct sockaddr_in *to, char *questions[],
   }
   return 0;
 }
-
+int jump_label(char *src, char *base){
+  short now = 0;
+  short i = 0;
+  short next = 0;
+  while (src[now] != 0) {
+    // printf("%d ",now);fflush(stdout);
+    if (is_compress(src[now])) {
+      unsigned short pos =
+          get_compress_pos(ntohs(*(const unsigned short *)(src + now)));
+      // printf("pos=%d ",pos);fflush(stdout);
+      next = now + 2;
+      return jump_label(base + pos, base);
+    } else {
+      // printf(" bbb ");fflush(stdout);
+      now += src[now] + 1;
+    }
+  }
+  next = now;
+  return next;
+}
 int fetch_label(char *dest, char *src, char *base, char **next) {
   /*
   获取标签。
@@ -166,17 +185,21 @@ int fetch_label(char *dest, char *src, char *base, char **next) {
   */
   short now = 0;
   short i = 0;
-
+  
   while (src[now] != 0) {
+    // printf("%d ",now);fflush(stdout);
     if (is_compress(src[now])) {
       unsigned short pos =
           get_compress_pos(ntohs(*(const unsigned short *)(src + now)));
+      // printf("pos=%d ",pos);fflush(stdout);
       if (next)
         *next = src + now + 2;
       return fetch_label(dest + i, base + pos, base, NULL);
     } else {
-      for (short j = 1; j <= src[now]; j++)
+      // printf(" bbb ");fflush(stdout);
+      for (short j = 1; j <= src[now]; j++){
         dest[i++] = src[j + now];
+      }
       dest[i++] = '.';
       now += src[now] + 1;
     }
@@ -184,6 +207,7 @@ int fetch_label(char *dest, char *src, char *base, char **next) {
   dest[i - 1] = '\0';
   if (next)
     *next = src + now;
+  // printf("\n");fflush(stdout);
   return i - 1;
 }
 int read_dns_header(struct dns_header *header, char *src) {
@@ -222,37 +246,49 @@ int read_dns_questions(struct question *question, char *message) {
   question->qtype = ntohs(q->qtype);
   return question_num;
 }
-int read_dns_answer(struct answer *dest, char *src, char *message_start) {
+int read_dns_answer(struct answer *dest, char *src, char *message_start,bool* good) {
   char *src_ = src;
+    // printf("------------\nsrc = %d\n",src - message_start);fflush(stdout);
   int cnt = fetch_label((char *)&(dest->name), src, message_start, &src);
-  if (cnt == -1)
+  // printf("src = %d\n",src - message_start);fflush(stdout);  
+  if (cnt == -1){
+        if(good)*good=false;
     return -1;
-  struct answer_struct *answer_struct = (struct answer_struct *)(src+1);
+  }
+  struct answer_struct *answer_struct = (struct answer_struct *)(src);
   dest->ttl = ntohl(answer_struct->ttl);
   dest->class_ = ntohs(answer_struct->class_);
   dest->type = ntohs(answer_struct->type);
   uint16_t length = ntohs(answer_struct->length);
   src += sizeof(struct answer_struct) + 1;
-  // printf("%d %d\n",dest->type,dest->class_);
+  // printf("dest->type:%d ,length=%d\n",dest->type,length);
   switch (dest->type) {
   case RRTYPE_A:
   case RRTYPE_AAAA:
-    saveip(&(dest->address), src, length);
+    memcpy(&dest->address,src,length);
+    if(good)*good=true;
     break;
   case RRTYPE_CNAME:
+    //  预留，不支持
     // dest->cname = (char*) malloc(80);
-    fetch_label(dest->cname, src, message_start, NULL);
+    // fetch_label(dest->cname, src, message_start, NULL);
+    if(good)*good=false;
     break;
   case RRTYPE_MX:
-    return -1;
+    //预留，不支持
+    // return -1;
     // next = 0;
+    if(good)*good=false;
     break;
   default:
-    return -1;
+    // 预留，不支持
+    // return -1;
     // next = 0;
+    if(good)*good=false;
     break;
   }
-  src += length;
+  src += length-1;//前面加1了，这边就加length-1
+  // printf("src = %d\n",src - message_start);fflush(stdout);  
   return src - src_;
 }
 
@@ -264,17 +300,23 @@ int read_dns_answers(struct answer *answers, char *message) {
   unsigned short ans = ntohs(header->ancount);
   unsigned short question = ntohs(header->qdcount);
   char *data = message + DNS_HEADER_SIZE;
+      // printf("");fflush(stdout);
+
   for (int i = 0; i < question; i++) {
     while ((*data) != 0)
       data += (*data) + 1;
     data += 5;
   }
+  bool good = false;
+  int cnt = 0;
   for (int i = 0; i < ans && data != 0; i++) {
-    
-    data += read_dns_answer((struct answer *)&answers[i], data, message);
+    data +=  read_dns_answer((struct answer *)&answers[cnt], data, message,&good);
+    if(good){
+      cnt++;
+    }
   }
   
-  return ans;
+  return cnt;
 }
 void set_header_id(char *buffer,unsigned short id){
    ((struct dns_header *)buffer)->id = htons(id);
@@ -349,7 +391,6 @@ int write_dns_answer(char *buffer, const char *name, int type, int class,
   // TODO: 添加异常处理
   struct answer_struct *answer;
   int count, size, tmp; //临时变量
-
   size = str_to_label(buffer, name, MAX_DNS_SIZE);
   if (size == -1)
     return -1;
@@ -363,7 +404,6 @@ int write_dns_answer(char *buffer, const char *name, int type, int class,
   answer->ttl = htonl(IN_32b_RANGE(ttl) ? ttl : 0);
   tmp = sizeof(struct answer_struct);
   buffer += tmp;
-
   switch (type) {
   case RRTYPE_A:
     answer->length = htons(4);

@@ -137,8 +137,8 @@ struct IP {
   union ip addr;      //上面的IP
   unsigned char type; //是数字4或者6
 };
-//从字符串保存IP
-int saveip(struct IP *ip, const char *src, int version);
+// //从字符串保存IP
+// int saveip(struct IP *ip, const char *src, int version);
 
 /** @struct dns_header
  *  @brief DNS header
@@ -288,7 +288,7 @@ int read_dns_header(struct dns_header *header, char *src);
  *  @return 这一条DNS
  * answer的长度（指字符串中，可以用来计算下一个answer开始的位置）
  */
-int read_dns_answer(struct answer *dest, char *src, char *message_start);
+int read_dns_answer(struct answer *dest, char *src, char *message_start,bool* good);
 
 /**
  *  @brief 读取全部dns answer。用户要自行保证answer*指针不会越界

@@ -107,6 +107,7 @@ void init_cache(cache*Cache,int record_length,int max_size,double filling_factor
   Cache->check = check;
   Cache->get_label =get_label;
   Cache->is_init = true;
+  pthread_mutex_init(&Cache->lock,NULL);//初始化锁
 }
 /**
  * @brief 默认初始化
@@ -330,15 +331,18 @@ static inline void remove_record(cache* Cache,struct record *record) {
   cache_stack_push(Cache,addr);
 }
 
-struct record_data *get_cache_A_record(cache* Cache,const char *label) {
+struct record_data *_get_cache_A_record(cache* Cache,const char *label) {
   if(Cache->is_init==false){
     log_error("cache not init");
     return NULL;
   }
+  // pthread_rwlock_rdlock(&Cache->rwlock);//读锁
   struct record *record = get(Cache,label);
-  if (!record)
+ 
+  if (!record){
+    // pthread_rwlock_unlock(&Cache->rwlock);// 释放读锁
     return NULL;
-
+  }
   #ifdef LOG_INCLUDED
   log_debug("get cache ;label:%s  label_finded= %s",label,((struct record_data*)record->data)->label);
   #endif 
@@ -347,10 +351,15 @@ struct record_data *get_cache_A_record(cache* Cache,const char *label) {
     #ifdef LOG_INCLUDED
     log_debug("%s timeout",label);
     #endif
+    // pthread_rwlock_unlock(&Cache->rwlock);// 释放读锁
+    // pthread_rwlock_wrlock(&Cache->rwlock);
     remove_record(Cache,record);
+    // pthread_rwlock_unlock(&Cache->rwlock);//释放写锁
     return NULL;
   }
   int now = get_record_addr(Cache,record);
+  // pthread_rwlock_unlock(&Cache->rwlock);// 释放读锁
+  // pthread_rwlock_wrlock(&Cache->rwlock);
   if (now != Cache->first) {
     linklist_remove_node(Cache, &Cache->records[now]);
     Cache->records[LRU_BUFFER_HEAD_POINT].next = now;
@@ -358,9 +367,10 @@ struct record_data *get_cache_A_record(cache* Cache,const char *label) {
     record->next = Cache->first;
     Cache->first = Cache->records[Cache->first].last = now;
   }
+  // pthread_rwlock_unlock(&Cache->rwlock);// 有问题
   return (struct record_data *)record->data;
 }
-int set_cache_A_record(cache*Cache,const char *label, void*data) {
+int _set_cache_A_record(cache*Cache,const char *label, void*data) {
   if(Cache->is_init==false){
     log_error("cache not init");
     return -1;
@@ -381,7 +391,7 @@ int set_cache_A_record(cache*Cache,const char *label, void*data) {
     return 0;
   }
 }
-int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size) {
+int _set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size) {
   if(Cache->is_init==false){
     log_error("cache not init");
     return -1;
@@ -704,4 +714,25 @@ bool set_static_cache(struct staticCache* Cache,const char* label,const struct I
     }
   }
   return false;
+}
+
+
+
+int set_cache_A_multi_record(cache*Cache,const char *label, void*data[],int size){
+    pthread_mutex_lock(&Cache->lock);
+    int val = _set_cache_A_multi_record(Cache,label,data,size);
+    pthread_mutex_unlock(&Cache->lock);
+    return val;
+}
+int set_cache_A_record(cache*Cache,const char *label, void*data){
+  pthread_mutex_lock(&Cache->lock);
+  int val=_set_cache_A_record(Cache,label,data);
+  pthread_mutex_unlock(&Cache->lock);
+  return val;
+}
+struct record_data *get_cache_A_record(cache* Cache,const char *label){
+  pthread_mutex_lock(&Cache->lock);
+  struct record_data *tmp = _get_cache_A_record(Cache,label);
+  pthread_mutex_unlock(&Cache->lock);
+  return tmp;
 }
