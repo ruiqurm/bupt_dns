@@ -31,7 +31,7 @@ SOFTWARE.
 #include <string.h>
 #include<stdlib.h>
 
-
+#include<pthread.h>
 // #include <windows.h> 
 #if defined(_WIN64) || defined( _WIN32)
 #include <windows.h>

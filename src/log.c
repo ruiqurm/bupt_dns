@@ -21,41 +21,41 @@ static int has_init_file = 0;
 
 static void lock(void) {
   if (LOGGING.has_lock) {
-  #ifdef __linux
+  // #ifdef __linux
   pthread_mutex_lock(&LOGGING.lock);
-  #elif _WIN64
-  WaitForSingleObject(LOGGING.lock, INFINITE);
-  #endif
+  // #elif _WIN64
+  // WaitForSingleObject(LOGGING.lock, INFINITE);
+  // #endif
     
   }
 }
 
 static void unlock(void) {
   if (LOGGING.has_lock) {
-      #ifdef __linux
+      // #ifdef __linux
       pthread_mutex_unlock(&LOGGING.lock);
-      #elif _WIN64
-      ReleaseMutex(LOGGING.lock);
-      #endif
+      // #elif _WIN64
+      // ReleaseMutex(LOGGING.lock);
+      // #endif
   }
 }
 static void lock_file(void) {
   if (FILE_LOGGING.has_lock) {
-    #ifdef __linux
+    // #ifdef __linux
     pthread_mutex_lock(&FILE_LOGGING.lock);
-    #elif _WIN64
-    WaitForSingleObject(FILE_LOGGING.lock, INFINITE);
-    #endif
+    // #elif _WIN64
+    // WaitForSingleObject(FILE_LOGGING.lock, INFINITE);
+    // #endif
   }
 }
 
 static void unlock_file(void) {
   if (FILE_LOGGING.has_lock) {
-      #ifdef __linux
+      // #ifdef __linux
       pthread_mutex_unlock(&FILE_LOGGING.lock);
-      #elif _WIN64
-      ReleaseMutex(FILE_LOGGING.lock);
-      #endif
+      // #elif _WIN64
+      // ReleaseMutex(FILE_LOGGING.lock);
+      // #endif
   }
 }
 static void init_event(log_Event *ev, void *udata) { //配置时间和流
@@ -75,7 +75,7 @@ static void stdout_callback(log_Event *ev) { //向控制台写
   //         ev->line);
   // // SetConsoleTextAttribute(handle, 0x7);
   // #elif __linux
-  fprintf(ev->udata, "%s \x1b[1m%s%-5s %s:%d:\x1b[0m ", buf,
+  fprintf(ev->udata, "%s pid=%d \x1b[1m%s%-5s %s:%d:\x1b[0m ", buf,pthread_self(),
           LOG_LEVEL_COLOR[ev->level], LOG_LEVEL_STRING[ev->level], ev->file,
           ev->line);
   // #endif

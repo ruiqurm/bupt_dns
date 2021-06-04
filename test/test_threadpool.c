@@ -1,6 +1,7 @@
 #include "threadPool.h"
 #include<unistd.h>
 #include<stdio.h>
+#include"windows.h"
 #ifdef __linux
 #include <sys/select.h>
 #endif

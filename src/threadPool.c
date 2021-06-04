@@ -96,8 +96,7 @@ void destroy_tpool(tpool_t* pool)
    free(pool);
 }
  
-int add_task_2_tpool(tpool_t* pool,void* (*routine)(void*),void* args)
-{
+int add_task_2_tpool(tpool_t* pool,void* (*routine)(void*),void* args){
    tpool_work_t* work,*member;
  
    if(!routine){
@@ -126,7 +125,7 @@ int add_task_2_tpool(tpool_t* pool,void* (*routine)(void*),void* args)
         }
         member->next = work;
    }
- 
+
    //notify the pool that new task arrived!
    pthread_cond_signal(&pool->queue_ready);
    pthread_mutex_unlock(&pool->queue_lock);
