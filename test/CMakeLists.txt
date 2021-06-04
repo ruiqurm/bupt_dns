@@ -22,9 +22,9 @@ ADD_TEST(NAME test_loadrecord COMMAND test_loadrecord)
 ADD_EXECUTABLE(test_loadrecord test_loadrecord.c)
 TARGET_LINK_LIBRARIES(test_loadrecord localrecord)
 
-ADD_TEST(NAME test_dns COMMAND test_dns)
-ADD_EXECUTABLE(test_dns test_dns.c)
-TARGET_LINK_LIBRARIES(test_dns adns)
+# ADD_TEST(NAME test_dns COMMAND test_dns)
+# ADD_EXECUTABLE(test_dns test_dns.c)
+# TARGET_LINK_LIBRARIES(test_dns adns)
 
 
 ADD_EXECUTABLE(test_timeout test_timeout.c)

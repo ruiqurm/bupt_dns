@@ -2,34 +2,7 @@
 北邮计网课设项目：DNS服务器  
 
 
-现在的预计工作：
-* 返回错误报文
-* 多线程
 
-* cache cname
-## 目录结构
-```
-|  .gitignore
-│  CMakeLists.txt
-│  README.md
-├─include
-│      cache.h
-│      common.h
-│      log.h
-│      relay.h
-│
-├─src
-│      cache.c
-│      CMakeLists.txt
-│      common.c
-│      log.c
-│      main.c
-│      relay.c
-│
-└─test
-        CMakeLists.txt
-        test.c
-```
 ## 如何部署
 ### 生成makefile
 ```cmd
@@ -45,3 +18,13 @@ windows下要切换clang可以用`cmake-gui ..`。configure编译器路径，然
 ## 执行
 执行build/src/dns.exe即可
 
+## feature
+* 解析报文
+* lru + hash cash
+    * A,AAAA缓存(如果有cname，会直接把cname指向的ip存到A记录上)
+    * 有一个缓存系统，可以自行添加更多解析报文
+* 彩色等级log
+* 报文转换表
+* 读取本地A记录
+
+目前多线程有死锁,在dev分支，有空改

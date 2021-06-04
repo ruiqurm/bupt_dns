@@ -238,21 +238,24 @@ int main(int argc, char **argv) {
           int count =0;
           struct record_data* send_data[20];
           now = time(NULL);
+          read_dns_question(&question,recv_buffer+12,recv_buffer);
           for(int i=0;i<ans_num;i++){
               // memcpy_s(&tmp_ans_data[count].ip,sizeof(struct IP),&ans[i].address,sizeof(struct IP)); 
               // puts(ans[0].name);
-              memcpy(&tmp_ans_data[count].ip,&ans[i].address,sizeof(struct IP));
-              tmp_ans_data[count].label = ans[i].name;
+              memcpy(&tmp_ans_data[count].ip,&ans[i].address.addr,sizeof(struct IP));
+              // printf("%04x:%04x:%04x\n",ans[i].address.addr.v6byte[0],ans[i].address.addr.v6byte[1],ans[i].address.addr.v6byte[2]);
+              tmp_ans_data[count].label = question.label;
               tmp_ans_data[count].ttl = now + ans[i].ttl;
               send_data[count] = &tmp_ans_data[count];
               count++;
           }
           log_debug("count:%d",count);
           if(count>0){
+            
             if(iptoaddr->type == RRTYPE_A){
-              set_cache_A_multi_record(&cacheset.A.temp,tmp_ans_data[0].label,(void**)send_data,count);
+              set_cache_A_multi_record(&cacheset.A.temp,question.label,(void**)send_data,count);
             }else if(iptoaddr->type == RRTYPE_AAAA){
-              set_cache_A_multi_record(&cacheset.AAAA.temp,tmp_ans_data[0].label,(void**)send_data,count);
+              set_cache_A_multi_record(&cacheset.AAAA.temp,question.label,(void**)send_data,count);
             }
           }
         }
@@ -306,7 +309,7 @@ int main(int argc, char **argv) {
         continue;
       }
       if(question.qtype==RRTYPE_A){
-        puts(question.label);
+        // puts(question.label);
         static_data = get_static_cache(&cacheset.A.local,question.label);
         // if(!static_data)puts("aaaaa");
         if(!static_data)data = get_cache_A_record(&cacheset.A.temp,question.label);
@@ -379,10 +382,6 @@ int main(int argc, char **argv) {
   }
   return 0;
 }
-
-
-
-
 
 
 

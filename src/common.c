@@ -250,9 +250,8 @@ int read_dns_answer(struct answer *dest, char *src, char *message_start,bool* go
   char *src_ = src;
     // printf("------------\nsrc = %d\n",src - message_start);fflush(stdout);
   int cnt = fetch_label((char *)&(dest->name), src, message_start, &src);
-  // printf("src = %d\n",src - message_start);fflush(stdout);  
+  if(good)*good=false;
   if (cnt == -1){
-        if(good)*good=false;
     return -1;
   }
   struct answer_struct *answer_struct = (struct answer_struct *)(src);
@@ -260,34 +259,32 @@ int read_dns_answer(struct answer *dest, char *src, char *message_start,bool* go
   dest->class_ = ntohs(answer_struct->class_);
   dest->type = ntohs(answer_struct->type);
   uint16_t length = ntohs(answer_struct->length);
-  src += sizeof(struct answer_struct) + 1;
+  src += sizeof(struct answer_struct);
   // printf("dest->type:%d ,length=%d\n",dest->type,length);
   switch (dest->type) {
   case RRTYPE_A:
   case RRTYPE_AAAA:
-    memcpy(&dest->address,src,length);
+    memcpy(&dest->address.addr,src,length);
+    dest->address.type =dest->type;
     if(good)*good=true;
     break;
   case RRTYPE_CNAME:
-    //  预留，不支持
+    //  直接存为A record
     // dest->cname = (char*) malloc(80);
     // fetch_label(dest->cname, src, message_start, NULL);
-    if(good)*good=false;
     break;
   case RRTYPE_MX:
     //预留，不支持
     // return -1;
     // next = 0;
-    if(good)*good=false;
     break;
   default:
     // 预留，不支持
     // return -1;
     // next = 0;
-    if(good)*good=false;
     break;
   }
-  src += length-1;//前面加1了，这边就加length-1
+  src += length;//前面加1了，这边就加length-1
   // printf("src = %d\n",src - message_start);fflush(stdout);  
   return src - src_;
 }
@@ -310,6 +307,7 @@ int read_dns_answers(struct answer *answers, char *message) {
   bool good = false;
   int cnt = 0;
   for (int i = 0; i < ans && data != 0; i++) {
+    good = false;
     data +=  read_dns_answer((struct answer *)&answers[cnt], data, message,&good);
     if(good){
       cnt++;
