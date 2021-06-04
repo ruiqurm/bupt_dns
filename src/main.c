@@ -188,30 +188,30 @@ int main(int argc, char **argv) {
     FD_SET(query_sockfd,&rset);
     
     int work_fd;  
-    if( (work_fd = select(max_fd,&rset,NULL,NULL,NULL))<0){
+    if( (work_fd = select(max_fd,&rset,NULL,NULL,&timeout))<0){
       //!!!!加处理
       log_info("跳过");
       continue;
     }
 
     // //查找超时的项并处理
-    // if(work_fd==0){
-    //   for(int i=0;i<IDAadpter_SIZE;i++){
-    //     if(IDAdapter.data[i].valid&&(clock()-IDAdapter.data[i].start>=DNS_TTL)){
-    //       IDtoAddr * idtoaddr = &IDAdapter.data[i].info;
-    //       log_info("超时回复");
-    //       set_header_flag(IDAdapter.data[i].message,FLAG_RESPONSE_NORMAL);
-    //       set_header_rcode_refused(IDAdapter.data[i].message);
-    //       if (sendto(server_sockfd, IDAdapter.data[i].message, strlen(IDAdapter.data[i].message), 0,(SA *)&idtoaddr->addr,
-    //                 sizeof(idtoaddr->addr)) < 0) {
-    //           log_error_shortcut("sendto error:");
-    //       } else {
-    //         log_info("发送成功");
-    //       }
-    //       IDAdapter.data[i].valid=false;
-    //     }
-    //   }
-    // }
+    if(work_fd==0){
+      for(int i=0;i<IDAadpter_SIZE;i++){
+        if(IDAdapter.data[i].valid&&(clock()-IDAdapter.data[i].start>=DNS_TTL)){
+          IDtoAddr * idtoaddr = &IDAdapter.data[i].info;
+          log_info("超时回复");
+          set_header_flag(IDAdapter.data[i].message,FLAG_RESPONSE_NORMAL);
+          set_header_rcode_refused(IDAdapter.data[i].message);
+          if (sendto(server_sockfd, IDAdapter.data[i].message, strlen(IDAdapter.data[i].message), 0,(SA *)&idtoaddr->addr,
+                    sizeof(idtoaddr->addr)) < 0) {
+              log_error_shortcut("sendto error:");
+          } else {
+            log_info("发送成功");
+          }
+          IDAdapter.data[i].valid=false;
+        }
+      }
+    }
     
     handle_relay://处理中继
     if (FD_ISSET(query_sockfd,&rset)){
